@@ -95,10 +95,22 @@ const Header = () => {
     const fetchNotifications = async () => {
       try {
         const res = await fetch("/api/notifications");
-        const data = await res.json();
-        if (!data.error) setNotifications(data);
+        const text = await res.text();
+        const data = text ? JSON.parse(text) : {};
+
+        if (
+          res.status === 401 ||
+          data.error?.includes("deleted") ||
+          data.error?.includes("Unauthorized")
+        ) {
+          localStorage.removeItem("user-threads");
+          window.location.href = "/auth";
+          return;
+        }
+
+        if (!data.error && Array.isArray(data)) setNotifications(data);
       } catch (error) {
-        console.error(error);
+        console.error("Notification fetch error:", error);
       }
     };
     fetchNotifications();
