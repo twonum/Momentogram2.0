@@ -14,7 +14,7 @@ import {
 import Conversation from "../components/Conversation";
 import { GiConversation } from "react-icons/gi";
 import MessageContainer from "../components/MessageContainer";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import useShowToast from "../hooks/useShowToast";
 import { useRecoilState, useRecoilValue } from "recoil";
 import {
@@ -36,12 +36,41 @@ const ChatPage = () => {
   const showToast = useShowToast();
   const { socket, onlineUsers } = useSocket();
 
-  // Minimalist Sleek Tokens
+  // Resizable Sidebar Width (Default = 340px)
+  const [sidebarWidth, setSidebarWidth] = useState(340);
+  const containerRef = useRef(null);
+  const isResizing = useRef(false);
+
   const bgCard = useColorModeValue("white", "gray.900");
-  const borderColor = useColorModeValue("gray.100", "whiteAlpha.100");
+  const borderColor = useColorModeValue("gray.200", "whiteAlpha.200");
+  const dividerColor = useColorModeValue("blue.400", "blue.500");
   const sidebarBg = useColorModeValue("white", "gray.900");
   const chatAreaBg = useColorModeValue("white", "gray.900");
   const inputBg = useColorModeValue("gray.50", "whiteAlpha.50");
+
+  const startResizing = useCallback((e) => {
+    e.preventDefault();
+    isResizing.current = true;
+    document.addEventListener("mousemove", resize);
+    document.addEventListener("mouseup", stopResizing);
+  }, []);
+
+  const resize = useCallback((e) => {
+    if (!isResizing.current || !containerRef.current) return;
+    const containerRect = containerRef.current.getBoundingClientRect();
+    const newWidth = e.clientX - containerRect.left;
+
+    // Allows dual-direction sidebar sizing between 260px and 480px, letting Message Container expand freely
+    if (newWidth >= 260 && newWidth <= 480) {
+      setSidebarWidth(newWidth);
+    }
+  }, []);
+
+  const stopResizing = useCallback(() => {
+    isResizing.current = false;
+    document.removeEventListener("mousemove", resize);
+    document.removeEventListener("mouseup", stopResizing);
+  }, [resize]);
 
   useEffect(() => {
     socket?.on("messagesSeen", ({ conversationId }) => {
@@ -156,12 +185,13 @@ const ChatPage = () => {
     <Box
       position={"relative"}
       w="full"
-      maxW="1100px"
+      maxW="1350px"
       mx="auto"
       px={{ base: 2, md: 4 }}
       py={2}
     >
       <Flex
+        ref={containerRef}
         gap={0}
         flexDirection={{ base: "column", md: "row" }}
         bg={bgCard}
@@ -169,15 +199,15 @@ const ChatPage = () => {
         border="1px solid"
         borderColor={borderColor}
         overflow="hidden"
-        boxShadow="lg"
-        h={{ base: "calc(100vh - 120px)", md: "720px" }}
+        boxShadow="xl"
+        h={{ base: "calc(100vh - 120px)", md: "750px" }}
+        w="full"
       >
-        {/* Sleek Minimalist Sidebar */}
+        {/* Manually Resizable Sidebar */}
         <Flex
-          flex={{
-            base: selectedConversation?._id ? "0 0 0px" : "1",
-            md: "340px",
-          }}
+          w={{ base: "full", md: `${sidebarWidth}px` }}
+          minW={{ md: "260px" }}
+          maxW={{ md: "480px" }}
           display={{
             base: selectedConversation?._id ? "none" : "flex",
             md: "flex",
@@ -186,9 +216,9 @@ const ChatPage = () => {
           flexDirection={"column"}
           p={4}
           bg={sidebarBg}
-          borderRight="1px solid"
-          borderColor={borderColor}
           overflowY="auto"
+          h="full"
+          flexShrink={0}
         >
           <Text
             fontWeight={700}
@@ -224,7 +254,7 @@ const ChatPage = () => {
             </InputGroup>
           </form>
 
-          <Box mt={1} overflowY="auto">
+          <Box mt={1} overflowY="auto" flex={1}>
             {loadingConversations &&
               [0, 1, 2, 3].map((_, i) => (
                 <Flex
@@ -258,9 +288,25 @@ const ChatPage = () => {
           </Box>
         </Flex>
 
-        {/* Clean, Bordered Minimalist Chat Area */}
+        {/* Draggable Divider Handle */}
+        <Box
+          display={{ base: "none", md: "flex" }}
+          w="6px"
+          bg={borderColor}
+          cursor="col-resize"
+          alignItems="center"
+          justifyContent="center"
+          _hover={{ bg: dividerColor }}
+          transition="background 0.2s"
+          onMouseDown={startResizing}
+          zIndex={10}
+        >
+          <Box w="1px" h="24px" bg="gray.400" />
+        </Box>
+
+        {/* Flexible Main Chat Area */}
         <Flex
-          flex={{ base: selectedConversation?._id ? "1" : "0 0 0px", md: "1" }}
+          flex={1}
           display={{
             base: selectedConversation?._id ? "flex" : "none",
             md: "flex",
@@ -270,6 +316,8 @@ const ChatPage = () => {
           alignItems="center"
           bg={chatAreaBg}
           position="relative"
+          h="full"
+          overflow="hidden"
         >
           {!selectedConversation?._id ? (
             <Flex

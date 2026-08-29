@@ -13,25 +13,29 @@ import { useRecoilState, useRecoilValue } from "recoil";
 import userAtom from "../atoms/userAtom";
 import { BsCheck2All, BsFillImageFill } from "react-icons/bs";
 import { selectedConversationAtom } from "../atoms/messagesAtom";
+import { useNavigate } from "react-router-dom";
 
 const Conversation = ({ conversation, isOnline }) => {
-  // Safe optional chaining to prevent undefined crashes on mock/new conversations
   const user = conversation?.participants?.[0];
   const currentUser = useRecoilValue(userAtom);
   const lastMessage = conversation?.lastMessage;
   const [selectedConversation, setSelectedConversation] = useRecoilState(
     selectedConversationAtom,
   );
+  const navigate = useNavigate();
 
-  // If participant hasn't loaded yet, return null to prevent rendering errors
   if (!user) return null;
 
-  // Dynamic UI Colors for Light/Dark Mode
   const isSelected = selectedConversation?._id === conversation._id;
   const bgSelected = useColorModeValue("blue.100", "whiteAlpha.200");
   const bgHover = useColorModeValue("gray.200", "whiteAlpha.100");
   const textColor = useColorModeValue("black", "white");
   const mutedTextColor = useColorModeValue("gray.600", "gray.400");
+
+  const handleAvatarClick = (e) => {
+    e.stopPropagation();
+    navigate(`/${user.username}`);
+  };
 
   return (
     <Flex
@@ -54,7 +58,7 @@ const Conversation = ({ conversation, isOnline }) => {
         })
       }
     >
-      <WrapItem>
+      <WrapItem onClick={handleAvatarClick}>
         <Avatar size={{ base: "sm", md: "md" }} src={user.profilePic}>
           {isOnline ? <AvatarBadge boxSize="1em" bg="green.500" /> : ""}
         </Avatar>
@@ -72,6 +76,11 @@ const Conversation = ({ conversation, isOnline }) => {
           display={"flex"}
           alignItems={"center"}
           isTruncated
+          onClick={(e) => {
+            e.stopPropagation();
+            navigate(`/${user.username}`);
+          }}
+          _hover={{ textDecoration: "underline" }}
         >
           {user.username} <Image src="/verified.png" w={4} h={4} ml={1} />
         </Text>

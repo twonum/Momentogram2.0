@@ -23,11 +23,13 @@ import { IoSend } from "react-icons/io5";
 import usePreviewImg from "../hooks/usePreviewImg";
 import { CloseButton } from "@chakra-ui/close-button";
 import { useSocket } from "../context/SocketContext";
-import notificationSound from "../assets/sounds/message.mp3";
+import notificationSound from "../assets/sounds/notification.mp3";
 import { Button } from "@chakra-ui/button";
+import { useNavigate } from "react-router-dom";
 
 const MessageContainer = () => {
   const showToast = useShowToast();
+  const navigate = useNavigate();
   const [selectedConversation, setSelectedConversation] = useRecoilState(
     selectedConversationAtom,
   );
@@ -42,10 +44,15 @@ const MessageContainer = () => {
   const messageEndRef = useRef(null);
   const imageRef = useRef(null);
 
-  // Modern UI Color Tokens
   const headerBg = useColorModeValue("white", "gray.950");
   const inputContainerBg = useColorModeValue("gray.50", "gray.900");
   const borderColor = useColorModeValue("gray.100", "whiteAlpha.100");
+
+  // Fallback helper to resolve avatar image fields correctly across different object structures
+  const activeAvatar =
+    selectedConversation.userProfilePic ||
+    selectedConversation.profilePic ||
+    "";
 
   useEffect(() => {
     socket?.on("newMessage", (message) => {
@@ -113,7 +120,6 @@ const MessageContainer = () => {
 
   useEffect(() => {
     const getMessages = async () => {
-      // Guard clause: Do not fetch if userId is missing or undefined
       if (
         !selectedConversation?.userId ||
         selectedConversation.userId === "undefined"
@@ -197,6 +203,12 @@ const MessageContainer = () => {
     }
   };
 
+  const goToProfile = () => {
+    if (selectedConversation?.username) {
+      navigate(`/${selectedConversation.username}`);
+    }
+  };
+
   return (
     <Flex
       w="full"
@@ -207,7 +219,7 @@ const MessageContainer = () => {
       borderBottomRightRadius="20px"
       overflow="hidden"
     >
-      {/* Sleek Chat Header */}
+      {/* Clickable Chat Header opening User Profile */}
       <Flex
         w={"full"}
         h={16}
@@ -217,13 +229,18 @@ const MessageContainer = () => {
         bg={headerBg}
         borderBottom="1px solid"
         borderColor={borderColor}
+        flexShrink={0}
+        cursor="pointer"
+        _hover={{ bg: useColorModeValue("gray.50", "whiteAlpha.50") }}
+        onClick={goToProfile}
       >
-        <Avatar src={selectedConversation.userProfilePic} size={"sm"} />
+        <Avatar src={activeAvatar} size={"sm"} />
         <Text
           display={"flex"}
           alignItems={"center"}
           fontWeight={"bold"}
           fontSize="md"
+          isTruncated
         >
           {selectedConversation.username}{" "}
           <Image src="/verified.png" w={4} h={4} ml={1} />
@@ -237,7 +254,9 @@ const MessageContainer = () => {
         px={5}
         py={4}
         overflowY={"auto"}
+        overflowX={"hidden"}
         gap={4}
+        w="full"
       >
         {loadingMessages &&
           [0, 1, 2, 4, 5].map((_, i) => (
@@ -261,13 +280,14 @@ const MessageContainer = () => {
               key={message._id}
               direction="column"
               w="full"
+              maxW="100%"
+              overflow="hidden"
               ref={idx === messages.length - 1 ? messageEndRef : null}
             >
               <Message
                 message={message}
                 ownMessage={currentUser._id === message.sender}
               />
-              {/* Sleek Divider Line Separating Consecutive Messages */}
               {idx < messages.length - 1 && (
                 <Divider
                   my={2}
@@ -283,7 +303,14 @@ const MessageContainer = () => {
 
       {/* Image Preview Container if attached */}
       {imgUrl && (
-        <Flex px={5} py={2} bg={inputContainerBg} align="center" gap={3}>
+        <Flex
+          px={5}
+          py={2}
+          bg={inputContainerBg}
+          align="center"
+          gap={3}
+          flexShrink={0}
+        >
           <Image
             src={imgUrl}
             alt="Selected img"
@@ -297,7 +324,7 @@ const MessageContainer = () => {
       )}
 
       {/* Modern Sleek Input Footer */}
-      <form onSubmit={handleSendMessage}>
+      <form onSubmit={handleSendMessage} style={{ width: "100%" }}>
         <Flex
           alignItems={"center"}
           px={4}
@@ -306,9 +333,11 @@ const MessageContainer = () => {
           borderTop="1px solid"
           borderColor={borderColor}
           gap={3}
+          w="full"
+          flexShrink={0}
         >
           <Input
-            placeholder="type mesg..."
+            placeholder="Type a message..."
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
             borderRadius="full"
@@ -316,6 +345,9 @@ const MessageContainer = () => {
             border="1px solid"
             borderColor={useColorModeValue("gray.200", "whiteAlpha.200")}
             py={5}
+            flex={1}
+            minW="0"
+            wordBreak="break-word"
             _focus={{ borderColor: "blue.400", boxShadow: "none" }}
           />
           <input
@@ -331,6 +363,7 @@ const MessageContainer = () => {
             onClick={() => imageRef.current.click()}
             colorScheme="gray"
             p={3}
+            flexShrink={0}
           >
             <BsFillImageFill size={20} />
           </Button>
@@ -341,6 +374,7 @@ const MessageContainer = () => {
             type="submit"
             isLoading={isSending}
             px={5}
+            flexShrink={0}
           >
             <IoSend size={16} />
           </Button>
