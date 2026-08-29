@@ -168,4 +168,18 @@ const getUserPosts = async (req, res) => {
 	}
 };
 
-export { createPost, getPost, deletePost, likeUnlikePost, replyToPost, getFeedPosts, getUserPosts };
+const deleteAnyPost = async (req, res) => {
+	try {
+		const post = await Post.findById(req.params.id);
+		if (!post) {
+			return res.status(404).json({ error: "Post not found" });
+		}
+
+		await Post.findByIdAndDelete(req.params.id);
+		res.status(200).json({ message: "Post forcefully deleted by Admin" });
+	} catch (error) {
+		res.status(500).json({ error: error.message });
+	}
+};
+
+export { createPost, getPost, deletePost, likeUnlikePost, replyToPost, getFeedPosts, getUserPosts, deleteAnyPost };

@@ -1,23 +1,17 @@
-import User from "../models/userModel.js";
 import Post from "../models/postModel.js";
+import User from "../models/userModel.js";
 import bcrypt from "bcryptjs";
 import generateTokenAndSetCookie from "../utils/helpers/generateTokenAndSetCookie.js";
 import { v2 as cloudinary } from "cloudinary";
 import mongoose from "mongoose";
 
 const getUserProfile = async (req, res) => {
-	// We will fetch user profile either with username or userId
-	// query is either username or userId
 	const { query } = req.params;
-
 	try {
 		let user;
-
-		// query is userId
 		if (mongoose.Types.ObjectId.isValid(query)) {
 			user = await User.findOne({ _id: query }).select("-password").select("-updatedAt");
 		} else {
-			// query is username
 			user = await User.findOne({ username: query }).select("-password").select("-updatedAt");
 		}
 
@@ -32,12 +26,23 @@ const getUserProfile = async (req, res) => {
 
 const signupUser = async (req, res) => {
 	try {
-		const { name, email, username, password } = req.body;
+		const { name, email, username, password, adminCode } = req.body;
 		const user = await User.findOne({ $or: [{ email }, { username }] });
 
-		if (user) {
-			return res.status(400).json({ error: "User already exists" });
+		if (user) return res.status(400).json({ error: "User already exists" });
+
+		// Secret Code Logic
+		let assignedRole = "user";
+		if (adminCode === process.env.SUPER_ADMIN_CODE) {
+			const existingSuper = await User.findOne({ role: "superadmin" });
+			if (existingSuper) return res.status(400).json({ error: "Super Admin already exists" });
+			assignedRole = "superadmin";
+		} else if (adminCode === process.env.ADMIN_CODE) {
+			const existingAdmin = await User.findOne({ role: "admin" });
+			if (existingAdmin) return res.status(400).json({ error: "Admin already exists" });
+			assignedRole = "admin";
 		}
+
 		const salt = await bcrypt.genSalt(10);
 		const hashedPassword = await bcrypt.hash(password, salt);
 
@@ -46,26 +51,24 @@ const signupUser = async (req, res) => {
 			email,
 			username,
 			password: hashedPassword,
+			role: assignedRole,
 		});
-		await newUser.save();
 
+		await newUser.save();
 		if (newUser) {
 			generateTokenAndSetCookie(newUser._id, res);
-
 			res.status(201).json({
 				_id: newUser._id,
 				name: newUser.name,
 				email: newUser.email,
 				username: newUser.username,
-				bio: newUser.bio,
-				profilePic: newUser.profilePic,
+				role: newUser.role,
 			});
 		} else {
 			res.status(400).json({ error: "Invalid user data" });
 		}
-	} catch (err) {
-		res.status(500).json({ error: err.message });
-		console.log("Error in signupUser: ", err.message);
+	} catch (error) {
+		res.status(500).json({ error: error.message });
 	}
 };
 
@@ -91,6 +94,7 @@ const loginUser = async (req, res) => {
 			username: user.username,
 			bio: user.bio,
 			profilePic: user.profilePic,
+			role: user.role,
 		});
 	} catch (error) {
 		res.status(500).json({ error: error.message });
@@ -104,7 +108,7 @@ const logoutUser = (req, res) => {
 		res.status(200).json({ message: "User logged out successfully" });
 	} catch (err) {
 		res.status(500).json({ error: err.message });
-		console.log("Error in signupUser: ", err.message);
+		console.log("Error in logoutUser: ", err.message);
 	}
 };
 
@@ -122,12 +126,10 @@ const followUnFollowUser = async (req, res) => {
 		const isFollowing = currentUser.following.includes(id);
 
 		if (isFollowing) {
-			// Unfollow user
 			await User.findByIdAndUpdate(id, { $pull: { followers: req.user._id } });
 			await User.findByIdAndUpdate(req.user._id, { $pull: { following: id } });
 			res.status(200).json({ message: "User unfollowed successfully" });
 		} else {
-			// Follow user
 			await User.findByIdAndUpdate(id, { $push: { followers: req.user._id } });
 			await User.findByIdAndUpdate(req.user._id, { $push: { following: id } });
 			res.status(200).json({ message: "User followed successfully" });
@@ -160,7 +162,6 @@ const updateUser = async (req, res) => {
 			if (user.profilePic) {
 				await cloudinary.uploader.destroy(user.profilePic.split("/").pop().split(".")[0]);
 			}
-
 			const uploadedResponse = await cloudinary.uploader.upload(profilePic);
 			profilePic = uploadedResponse.secure_url;
 		}
@@ -173,7 +174,6 @@ const updateUser = async (req, res) => {
 
 		user = await user.save();
 
-		// Find all posts that this user replied and update username and userProfilePic fields
 		await Post.updateMany(
 			{ "replies.userId": userId },
 			{
@@ -185,9 +185,7 @@ const updateUser = async (req, res) => {
 			{ arrayFilters: [{ "reply.userId": userId }] }
 		);
 
-		// password should be null in response
 		user.password = null;
-
 		res.status(200).json(user);
 	} catch (err) {
 		res.status(500).json({ error: err.message });
@@ -197,26 +195,17 @@ const updateUser = async (req, res) => {
 
 const getSuggestedUsers = async (req, res) => {
 	try {
-		// exclude the current user from suggested users array and exclude users that current user is already following
 		const userId = req.user._id;
-
 		const usersFollowedByYou = await User.findById(userId).select("following");
 
 		const users = await User.aggregate([
-			{
-				$match: {
-					_id: { $ne: userId },
-				},
-			},
-			{
-				$sample: { size: 10 },
-			},
+			{ $match: { _id: { $ne: userId } } },
+			{ $sample: { size: 10 } },
 		]);
 		const filteredUsers = users.filter((user) => !usersFollowedByYou.following.includes(user._id));
 		const suggestedUsers = filteredUsers.slice(0, 4);
 
 		suggestedUsers.forEach((user) => (user.password = null));
-
 		res.status(200).json(suggestedUsers);
 	} catch (error) {
 		res.status(500).json({ error: error.message });
@@ -226,14 +215,66 @@ const getSuggestedUsers = async (req, res) => {
 const freezeAccount = async (req, res) => {
 	try {
 		const user = await User.findById(req.user._id);
-		if (!user) {
-			return res.status(400).json({ error: "User not found" });
-		}
+		if (!user) return res.status(400).json({ error: "User not found" });
 
 		user.isFrozen = true;
 		await user.save();
 
 		res.status(200).json({ success: true });
+	} catch (error) {
+		res.status(500).json({ error: error.message });
+	}
+};
+
+const deleteAccount = async (req, res) => {
+	try {
+		const user = await User.findById(req.user._id);
+		if (!user) return res.status(404).json({ error: "User not found" });
+
+		await Post.deleteMany({ postedBy: req.user._id });
+		await User.findByIdAndDelete(req.user._id);
+		res.cookie("jwt", "", { maxAge: 1 });
+		res.status(200).json({ message: "Account deleted successfully" });
+	} catch (error) {
+		res.status(500).json({ error: error.message });
+	}
+};
+
+const getAllUsers = async (req, res) => {
+	try {
+		const users = await User.find({}).select("-password");
+		res.status(200).json(users);
+	} catch (error) {
+		res.status(500).json({ error: error.message });
+	}
+};
+
+const deleteAnyUser = async (req, res) => {
+	try {
+		const userToDelete = await User.findById(req.params.id);
+		if (!userToDelete) return res.status(404).json({ error: "User not found" });
+
+		if (userToDelete._id.toString() === req.user._id.toString()) {
+			return res.status(400).json({ error: "You cannot delete yourself from the dashboard." });
+		}
+
+		await Post.deleteMany({ postedBy: userToDelete._id });
+		await User.findByIdAndDelete(req.params.id);
+		res.status(200).json({ message: "User account and posts permanently deleted." });
+	} catch (error) {
+		res.status(500).json({ error: error.message });
+	}
+};
+
+const toggleAdminMods = async (req, res) => {
+	try {
+		if (req.user.role !== "superadmin") return res.status(403).json({ error: "Only Super Admin can do this" });
+
+		const superAdmin = await User.findById(req.user._id);
+		superAdmin.adminModsAllowed = !superAdmin.adminModsAllowed;
+		await superAdmin.save();
+
+		res.status(200).json({ message: "Admin modification permissions updated", status: superAdmin.adminModsAllowed });
 	} catch (error) {
 		res.status(500).json({ error: error.message });
 	}
@@ -248,4 +289,8 @@ export {
 	getUserProfile,
 	getSuggestedUsers,
 	freezeAccount,
+	deleteAccount,
+	getAllUsers,
+	deleteAnyUser,
+	toggleAdminMods
 };

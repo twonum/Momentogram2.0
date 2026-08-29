@@ -15,6 +15,7 @@ import { FiLogOut } from "react-icons/fi";
 import useLogout from "../hooks/useLogout";
 import authScreenAtom from "../atoms/authAtom";
 import { BsFillChatQuoteFill } from "react-icons/bs";
+import { MdOutlineAdminPanelSettings } from "react-icons/md";
 import { MdOutlineSettings } from "react-icons/md";
 
 const Header = () => {
@@ -33,6 +34,11 @@ const Header = () => {
       {user && (
         <Link as={RouterLink} to="/">
           <AiFillHome size={24} />
+        </Link>
+      )}
+      {user && (user.role === "admin" || user.role === "superadmin") && (
+        <Link as={RouterLink} to={`/admin`}>
+          <MdOutlineAdminPanelSettings size={22} color="red" />
         </Link>
       )}
       {!user && (

@@ -33,7 +33,10 @@ function App() {
             path="/update"
             element={user ? <UpdateProfilePage /> : <Navigate to="/auth" />}
           />
-
+          <Route
+            path="/admin"
+            element={user?.isAdmin ? <AdminPage /> : <Navigate to="/" />}
+          />
           <Route
             path="/:username"
             element={

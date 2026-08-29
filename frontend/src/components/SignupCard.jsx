@@ -29,6 +29,7 @@ export default function SignupCard() {
     username: "",
     email: "",
     password: "",
+    adminCode: "",
   });
 
   const showToast = useShowToast();
@@ -36,23 +37,27 @@ export default function SignupCard() {
   const [loading, setLoading] = useState(false);
 
   const handleSignup = async (e) => {
-    e.preventDefault(); // Prevents page reload on form submit
+    e.preventDefault();
     setLoading(true);
     try {
       const res = await fetch("/api/users/signup", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(inputs),
       });
-      const data = await res.json();
+
+      // Safe JSON parsing to prevent crashes
+      const text = await res.text();
+      if (!text)
+        throw new Error(
+          "Server returned an empty response. It may be offline.",
+        );
+      const data = JSON.parse(text);
 
       if (data.error) {
         showToast("Error", data.error, "error");
         return;
       }
-
       localStorage.setItem("user-threads", JSON.stringify(data));
       setUser(data);
     } catch (error) {
@@ -127,14 +132,23 @@ export default function SignupCard() {
                   <InputRightElement h={"full"}>
                     <Button
                       variant={"ghost"}
-                      onClick={() =>
-                        setShowPassword((showPassword) => !showPassword)
-                      }
+                      onClick={() => setShowPassword((prev) => !prev)}
                     >
                       {showPassword ? <ViewIcon /> : <ViewOffIcon />}
                     </Button>
                   </InputRightElement>
                 </InputGroup>
+              </FormControl>
+              <FormControl>
+                <FormLabel>Admin Code (Optional)</FormLabel>
+                <Input
+                  type="password"
+                  placeholder="Leave blank for standard user"
+                  onChange={(e) =>
+                    setInputs({ ...inputs, adminCode: e.target.value })
+                  }
+                  value={inputs.adminCode}
+                />
               </FormControl>
               <Stack spacing={10} pt={2}>
                 <Button
@@ -143,9 +157,7 @@ export default function SignupCard() {
                   size="lg"
                   bg={useColorModeValue("gray.600", "gray.700")}
                   color={"white"}
-                  _hover={{
-                    bg: useColorModeValue("gray.700", "gray.800"),
-                  }}
+                  _hover={{ bg: useColorModeValue("gray.700", "gray.800") }}
                   isLoading={loading}
                 >
                   Sign up
