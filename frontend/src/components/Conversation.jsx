@@ -13,16 +13,14 @@ import { useRecoilState, useRecoilValue } from "recoil";
 import userAtom from "../atoms/userAtom";
 import { BsCheck2All, BsFillImageFill } from "react-icons/bs";
 import { selectedConversationAtom } from "../atoms/messagesAtom";
-import { useNavigate } from "react-router-dom";
 
-const Conversation = ({ conversation, isOnline }) => {
+const Conversation = ({ conversation, isOnline, isCompact }) => {
   const user = conversation?.participants?.[0];
   const currentUser = useRecoilValue(userAtom);
   const lastMessage = conversation?.lastMessage;
   const [selectedConversation, setSelectedConversation] = useRecoilState(
     selectedConversationAtom,
   );
-  const navigate = useNavigate();
 
   if (!user) return null;
 
@@ -32,10 +30,38 @@ const Conversation = ({ conversation, isOnline }) => {
   const textColor = useColorModeValue("black", "white");
   const mutedTextColor = useColorModeValue("gray.600", "gray.400");
 
-  const handleAvatarClick = (e) => {
-    e.stopPropagation();
-    navigate(`/${user.username}`);
+  const handleSelectChat = () => {
+    setSelectedConversation({
+      _id: conversation._id,
+      userId: user._id,
+      userProfilePic: user.profilePic,
+      username: user.username,
+      mock: conversation.mock,
+    });
   };
+
+  if (isCompact) {
+    return (
+      <Flex
+        justify="center"
+        align="center"
+        p={2}
+        borderRadius="xl"
+        cursor="pointer"
+        bg={isSelected ? bgSelected : "transparent"}
+        _hover={{ bg: isSelected ? bgSelected : bgHover }}
+        transition="all 0.2s ease"
+        onClick={handleSelectChat}
+        title={user.username}
+      >
+        <WrapItem>
+          <Avatar size={"md"} src={user.profilePic}>
+            {isOnline ? <AvatarBadge boxSize="1em" bg="green.500" /> : ""}
+          </Avatar>
+        </WrapItem>
+      </Flex>
+    );
+  }
 
   return (
     <Flex
@@ -48,17 +74,9 @@ const Conversation = ({ conversation, isOnline }) => {
       bg={isSelected ? bgSelected : "transparent"}
       _hover={{ bg: isSelected ? bgSelected : bgHover }}
       transition="all 0.2s ease"
-      onClick={() =>
-        setSelectedConversation({
-          _id: conversation._id,
-          userId: user._id,
-          userProfilePic: user.profilePic,
-          username: user.username,
-          mock: conversation.mock,
-        })
-      }
+      onClick={handleSelectChat}
     >
-      <WrapItem onClick={handleAvatarClick}>
+      <WrapItem>
         <Avatar size={{ base: "sm", md: "md" }} src={user.profilePic}>
           {isOnline ? <AvatarBadge boxSize="1em" bg="green.500" /> : ""}
         </Avatar>
@@ -76,11 +94,6 @@ const Conversation = ({ conversation, isOnline }) => {
           display={"flex"}
           alignItems={"center"}
           isTruncated
-          onClick={(e) => {
-            e.stopPropagation();
-            navigate(`/${user.username}`);
-          }}
-          _hover={{ textDecoration: "underline" }}
         >
           {user.username} <Image src="/verified.png" w={4} h={4} ml={1} />
         </Text>

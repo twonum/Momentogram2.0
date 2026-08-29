@@ -20,6 +20,7 @@ import {
 import userAtom from "../atoms/userAtom";
 import { BsFillImageFill } from "react-icons/bs";
 import { IoSend } from "react-icons/io5";
+import { FiArrowLeft } from "react-icons/fi";
 import usePreviewImg from "../hooks/usePreviewImg";
 import { CloseButton } from "@chakra-ui/close-button";
 import { useSocket } from "../context/SocketContext";
@@ -48,7 +49,6 @@ const MessageContainer = () => {
   const inputContainerBg = useColorModeValue("gray.50", "gray.900");
   const borderColor = useColorModeValue("gray.100", "whiteAlpha.100");
 
-  // Fallback helper to resolve avatar image fields correctly across different object structures
   const activeAvatar =
     selectedConversation.userProfilePic ||
     selectedConversation.profilePic ||
@@ -203,7 +203,8 @@ const MessageContainer = () => {
     }
   };
 
-  const goToProfile = () => {
+  const goToProfile = (e) => {
+    e.stopPropagation();
     if (selectedConversation?.username) {
       navigate(`/${selectedConversation.username}`);
     }
@@ -219,32 +220,50 @@ const MessageContainer = () => {
       borderBottomRightRadius="20px"
       overflow="hidden"
     >
-      {/* Clickable Chat Header opening User Profile */}
+      {/* Sleek Chat Header with Back Button */}
       <Flex
         w={"full"}
         h={16}
         alignItems={"center"}
-        px={5}
+        px={4}
         gap={3}
         bg={headerBg}
         borderBottom="1px solid"
         borderColor={borderColor}
         flexShrink={0}
-        cursor="pointer"
-        _hover={{ bg: useColorModeValue("gray.50", "whiteAlpha.50") }}
-        onClick={goToProfile}
       >
-        <Avatar src={activeAvatar} size={"sm"} />
-        <Text
-          display={"flex"}
-          alignItems={"center"}
-          fontWeight={"bold"}
-          fontSize="md"
-          isTruncated
+        {/* Back Button to return to conversation list */}
+        <Button
+          size="sm"
+          variant="ghost"
+          borderRadius="full"
+          p={2}
+          onClick={() => setSelectedConversation(null)}
+          title="Back to conversations"
         >
-          {selectedConversation.username}{" "}
-          <Image src="/verified.png" w={4} h={4} ml={1} />
-        </Text>
+          <FiArrowLeft size={20} />
+        </Button>
+
+        <Flex
+          alignItems="center"
+          gap={3}
+          cursor="pointer"
+          flex={1}
+          onClick={goToProfile}
+          _hover={{ opacity: 0.85 }}
+        >
+          <Avatar src={activeAvatar} size={"sm"} />
+          <Text
+            display={"flex"}
+            alignItems={"center"}
+            fontWeight={"bold"}
+            fontSize="md"
+            isTruncated
+          >
+            {selectedConversation.username}{" "}
+            <Image src="/verified.png" w={4} h={4} ml={1} />
+          </Text>
+        </Flex>
       </Flex>
 
       {/* Messages Scroll Area */}

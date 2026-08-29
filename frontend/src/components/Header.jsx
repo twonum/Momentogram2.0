@@ -28,8 +28,8 @@ import userAtom from "../atoms/userAtom";
 import { selectedConversationAtom } from "../atoms/messagesAtom";
 import { AiFillHome } from "react-icons/ai";
 import { RxAvatar } from "react-icons/rx";
-import { Link as RouterLink, useNavigate } from "react-router-dom";
-import { FiLogOut, FiSearch, FiBell } from "react-icons/fi";
+import { Link as RouterLink, useNavigate, useLocation } from "react-router-dom";
+import { FiLogOut, FiSearch, FiBell, FiArrowLeft } from "react-icons/fi";
 import useLogout from "../hooks/useLogout";
 import authScreenAtom from "../atoms/authAtom";
 import { BsFillChatQuoteFill } from "react-icons/bs";
@@ -45,6 +45,7 @@ const Header = () => {
   const setSelectedConversation = useSetRecoilState(selectedConversationAtom);
   const showToast = useShowToast();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const hoverBg = useColorModeValue("gray.100", "gray.700");
 
@@ -113,9 +114,27 @@ const Header = () => {
     }
   };
 
+  // Check if we can go back (hide back button on home route "/")
+  const showBackButton = location.pathname !== "/";
+
   return (
     <Flex justifyContent={"space-between"} alignItems={"center"} mt={6} mb="12">
-      <Flex gap={4} alignItems="center">
+      <Flex gap={3} alignItems="center">
+        {/* Universal Back Button */}
+        {showBackButton && (
+          <Tooltip label="Go Back" hasArrow placement="bottom">
+            <Button
+              size="sm"
+              variant="ghost"
+              borderRadius="full"
+              p={2}
+              onClick={() => navigate(-1)}
+            >
+              <FiArrowLeft size={20} />
+            </Button>
+          </Tooltip>
+        )}
+
         {user && (
           <Tooltip label="Home Feed" hasArrow placement="bottom">
             <Link as={RouterLink} to="/">
@@ -185,7 +204,7 @@ const Header = () => {
                   </Flex>
                 </MenuButton>
                 <MenuList
-                  maxH="380px"
+                  maxH="300px"
                   overflowY="auto"
                   p={2}
                   borderRadius="xl"

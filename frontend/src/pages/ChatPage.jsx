@@ -36,8 +36,8 @@ const ChatPage = () => {
   const showToast = useShowToast();
   const { socket, onlineUsers } = useSocket();
 
-  // Resizable Sidebar Width (Default = 340px)
-  const [sidebarWidth, setSidebarWidth] = useState(340);
+  // Resizable Sidebar Width (Default = 350px)
+  const [sidebarWidth, setSidebarWidth] = useState(350);
   const containerRef = useRef(null);
   const isResizing = useRef(false);
 
@@ -60,8 +60,8 @@ const ChatPage = () => {
     const containerRect = containerRef.current.getBoundingClientRect();
     const newWidth = e.clientX - containerRect.left;
 
-    // Allows dual-direction sidebar sizing between 260px and 480px, letting Message Container expand freely
-    if (newWidth >= 260 && newWidth <= 480) {
+    // Boundaries: Min 88px (Avatar mode) to Max 500px
+    if (newWidth >= 88 && newWidth <= 500) {
       setSidebarWidth(newWidth);
     }
   }, []);
@@ -71,6 +71,8 @@ const ChatPage = () => {
     document.removeEventListener("mousemove", resize);
     document.removeEventListener("mouseup", stopResizing);
   }, [resize]);
+
+  const isCompact = sidebarWidth < 230;
 
   useEffect(() => {
     socket?.on("messagesSeen", ({ conversationId }) => {
@@ -182,79 +184,86 @@ const ChatPage = () => {
   };
 
   return (
+    // Expanded full-width & full-height container layout
     <Box
       position={"relative"}
       w="full"
-      maxW="1350px"
+      h="calc(100vh - 110px)"
+      maxW="100%"
       mx="auto"
-      px={{ base: 2, md: 4 }}
-      py={2}
+      px={2}
+      pb={2}
     >
       <Flex
         ref={containerRef}
         gap={0}
         flexDirection={{ base: "column", md: "row" }}
         bg={bgCard}
-        borderRadius="20px"
+        borderRadius="24px"
         border="1px solid"
         borderColor={borderColor}
         overflow="hidden"
-        boxShadow="xl"
-        h={{ base: "calc(100vh - 120px)", md: "750px" }}
+        boxShadow="2xl"
         w="full"
+        h="full"
       >
-        {/* Manually Resizable Sidebar */}
+        {/* Resizable Sidebar */}
         <Flex
           w={{ base: "full", md: `${sidebarWidth}px` }}
-          minW={{ md: "260px" }}
-          maxW={{ md: "480px" }}
+          minW={{ md: "88px" }}
+          maxW={{ md: "500px" }}
           display={{
             base: selectedConversation?._id ? "none" : "flex",
             md: "flex",
           }}
           gap={3}
           flexDirection={"column"}
-          p={4}
+          p={isCompact ? 2 : 5}
           bg={sidebarBg}
           overflowY="auto"
           h="full"
           flexShrink={0}
+          transition="padding 0.2s ease"
         >
-          <Text
-            fontWeight={700}
-            fontSize="xl"
-            px={2}
-            pt={1}
-            pb={1}
-            tracking="tight"
-          >
-            Messages
-          </Text>
+          {!isCompact && (
+            <Text
+              fontWeight={800}
+              fontSize="2xl"
+              px={2}
+              pt={2}
+              pb={2}
+              tracking="tight"
+            >
+              Messages
+            </Text>
+          )}
 
-          <form onSubmit={handleConversationSearch}>
-            <InputGroup size="sm" px={1}>
-              <InputLeftElement pointerEvents="none" h="full" pl={3}>
-                <SearchIcon color="gray.400" boxSize={3.5} />
-              </InputLeftElement>
-              <Input
-                placeholder="Search messages..."
-                borderRadius="full"
-                bg={inputBg}
-                borderColor="transparent"
-                _hover={{ borderColor: "gray.300" }}
-                _focus={{
-                  bg: "transparent",
-                  borderColor: "blue.400",
-                  boxShadow: "none",
-                }}
-                pl={9}
-                py={4}
-                onChange={(e) => setSearchText(e.target.value)}
-              />
-            </InputGroup>
-          </form>
+          {!isCompact && (
+            <form onSubmit={handleConversationSearch}>
+              <InputGroup size="md" px={1}>
+                <InputLeftElement pointerEvents="none" h="full" pl={3}>
+                  <SearchIcon color="gray.400" boxSize={4} />
+                </InputLeftElement>
+                <Input
+                  placeholder="Search messages..."
+                  borderRadius="full"
+                  bg={inputBg}
+                  borderColor="transparent"
+                  _hover={{ borderColor: "gray.300" }}
+                  _focus={{
+                    bg: "transparent",
+                    borderColor: "blue.400",
+                    boxShadow: "none",
+                  }}
+                  pl={10}
+                  py={5}
+                  onChange={(e) => setSearchText(e.target.value)}
+                />
+              </InputGroup>
+            </form>
+          )}
 
-          <Box mt={1} overflowY="auto" flex={1}>
+          <Box mt={2} overflowY="auto" flex={1}>
             {loadingConversations &&
               [0, 1, 2, 3].map((_, i) => (
                 <Flex
@@ -264,24 +273,28 @@ const ChatPage = () => {
                   p={3}
                   mb={1}
                   borderRadius="xl"
+                  justify={isCompact ? "center" : "flex-start"}
                 >
-                  <SkeletonCircle size={"10"} />
-                  <Flex w={"full"} flexDirection={"column"} gap={2}>
-                    <Skeleton h={"10px"} w={"90px"} borderRadius="md" />
-                    <Skeleton h={"8px"} w={"70%"} borderRadius="md" />
-                  </Flex>
+                  <SkeletonCircle size={"12"} />
+                  {!isCompact && (
+                    <Flex w={"full"} flexDirection={"column"} gap={2}>
+                      <Skeleton h={"12px"} w={"100px"} borderRadius="md" />
+                      <Skeleton h={"10px"} w={"75%"} borderRadius="md" />
+                    </Flex>
+                  )}
                 </Flex>
               ))}
 
             {!loadingConversations &&
               Array.isArray(conversations) &&
               conversations.map((conversation) => (
-                <Box key={conversation._id} mb={1}>
+                <Box key={conversation._id} mb={1.5}>
                   <Conversation
                     isOnline={onlineUsers.includes(
                       conversation.participants?.[0]?._id,
                     )}
                     conversation={conversation}
+                    isCompact={isCompact}
                   />
                 </Box>
               ))}
@@ -301,10 +314,10 @@ const ChatPage = () => {
           onMouseDown={startResizing}
           zIndex={10}
         >
-          <Box w="1px" h="24px" bg="gray.400" />
+          <Box w="1px" h="30px" bg="gray.400" />
         </Box>
 
-        {/* Flexible Main Chat Area */}
+        {/* Immersive Full-Size Chat Area */}
         <Flex
           flex={1}
           display={{
@@ -325,24 +338,24 @@ const ChatPage = () => {
               alignItems={"center"}
               justifyContent={"center"}
               height={"100%"}
-              p={6}
+              p={8}
               textAlign="center"
             >
               <Box
-                p={5}
-                bg={useColorModeValue("gray.50", "whiteAlpha.50")}
+                p={6}
+                bg={useColorModeValue("blue.50", "whiteAlpha.50")}
                 borderRadius="full"
-                mb={3}
-                color="gray.400"
+                mb={4}
+                color="blue.400"
               >
-                <GiConversation size={50} />
+                <GiConversation size={60} />
               </Box>
-              <Text fontSize="md" fontWeight="600" color="gray.600" mb={1}>
-                Select a chat
+              <Text fontSize="lg" fontWeight="700" mb={1}>
+                Select a conversation
               </Text>
-              <Text fontSize="xs" color="gray.400" maxW="240px">
-                Choose from your existing conversations or search for a user to
-                start messaging.
+              <Text fontSize="sm" color="gray.500" maxW="300px">
+                Choose from your existing chats or search for a user to start
+                messaging across the platform.
               </Text>
             </Flex>
           ) : (
