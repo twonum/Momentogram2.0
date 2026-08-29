@@ -5,6 +5,7 @@ import {
   Link,
   Tooltip,
   useColorMode,
+  useColorModeValue,
   useDisclosure,
   Modal,
   ModalOverlay,
@@ -24,9 +25,10 @@ import {
 } from "@chakra-ui/react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import userAtom from "../atoms/userAtom";
+import { selectedConversationAtom } from "../atoms/messagesAtom";
 import { AiFillHome } from "react-icons/ai";
 import { RxAvatar } from "react-icons/rx";
-import { Link as RouterLink } from "react-router-dom";
+import { Link as RouterLink, useNavigate } from "react-router-dom";
 import { FiLogOut, FiSearch, FiBell } from "react-icons/fi";
 import useLogout from "../hooks/useLogout";
 import authScreenAtom from "../atoms/authAtom";
@@ -40,8 +42,13 @@ const Header = () => {
   const user = useRecoilValue(userAtom);
   const logout = useLogout();
   const setAuthScreen = useSetRecoilState(authScreenAtom);
+  const setSelectedConversation = useSetRecoilState(selectedConversationAtom);
   const showToast = useShowToast();
+  const navigate = useNavigate();
 
+  const hoverBg = useColorModeValue("gray.100", "gray.700");
+
+  // Search Logic
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [searchText, setSearchText] = useState("");
   const [searchResults, setSearchResults] = useState([]);
@@ -62,7 +69,18 @@ const Header = () => {
       setIsSearching(false);
     }
   };
-
+  const handleDirectMessage = (searchedUser) => {
+    onClose();
+    setSelectedConversation({
+      _id: Date.now(),
+      userId: searchedUser._id, // Explicitly mapped to searchedUser._id
+      username: searchedUser.username,
+      userProfilePic: searchedUser.profilePic,
+      mock: true,
+    });
+    navigate("/chat");
+  };
+  // Notifications Logic
   const [notifications, setNotifications] = useState([]);
   const unreadCount = notifications.filter((n) => !n.read).length;
 
@@ -141,46 +159,88 @@ const Header = () => {
           <Tooltip label="Notifications" hasArrow placement="bottom">
             <Box>
               <Menu onOpen={handleMarkAsRead}>
-                <Tooltip label="Notifications" hasArrow placement="bottom">
-                  <MenuButton
-                    display="flex"
-                    alignItems="center"
-                    justifyContent="center"
+                <MenuButton
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="center"
+                >
+                  <Flex alignItems="center" position="relative">
+                    <FiBell size={22} />
+                    {unreadCount > 0 && (
+                      <Badge
+                        colorScheme="red"
+                        position="absolute"
+                        top="-1"
+                        right="-2"
+                        borderRadius="full"
+                      >
+                        {unreadCount}
+                      </Badge>
+                    )}
+                  </Flex>
+                </MenuButton>
+                <MenuList
+                  maxH="380px"
+                  overflowY="auto"
+                  p={2}
+                  borderRadius="xl"
+                  boxShadow="xl"
+                  bg={useColorModeValue("white", "gray.dark")}
+                >
+                  <Text
+                    px={3}
+                    py={2}
+                    fontWeight="bold"
+                    fontSize="sm"
+                    borderBottom="1px solid"
+                    borderColor={useColorModeValue(
+                      "gray.100",
+                      "whiteAlpha.100",
+                    )}
+                    mb={1}
                   >
-                    <Flex alignItems="center" position="relative">
-                      <FiBell size={22} />
-                      {unreadCount > 0 && (
-                        <Badge
-                          colorScheme="red"
-                          position="absolute"
-                          top="-1"
-                          right="-2"
-                          borderRadius="full"
-                        >
-                          {unreadCount}
-                        </Badge>
-                      )}
-                    </Flex>
-                  </MenuButton>
-                </Tooltip>
-                <MenuList maxH="300px" overflowY="auto">
+                    Notifications
+                  </Text>
                   {notifications.length === 0 ? (
-                    <MenuItem>No new notifications</MenuItem>
+                    <Text
+                      textAlign="center"
+                      py={6}
+                      fontSize="sm"
+                      color="gray.500"
+                    >
+                      No new notifications
+                    </Text>
                   ) : (
                     notifications.map((notif) => (
                       <MenuItem
                         key={notif._id}
                         as={RouterLink}
                         to={`/${notif.sender.username}`}
+                        borderRadius="lg"
+                        p={3}
+                        mb={1}
+                        bg={
+                          !notif.read
+                            ? useColorModeValue("blue.50", "whiteAlpha.50")
+                            : "transparent"
+                        }
+                        _hover={{
+                          bg: useColorModeValue("gray.100", "whiteAlpha.200"),
+                        }}
                       >
                         <Avatar
                           src={notif.sender.profilePic}
                           size="sm"
                           mr={3}
                         />
-                        <Text>
-                          <b>{notif.sender.username}</b> started following you
-                        </Text>
+                        <Box>
+                          <Text fontSize="sm">
+                            <b>{notif.sender.username}</b> started following you
+                          </Text>
+                          <Text fontSize="xs" color="gray.500" mt={0.5}>
+                            {new Date(notif.createdAt).toLocaleDateString()}
+                          </Text>
+                        </Box>
                       </MenuItem>
                     ))
                   )}
@@ -246,12 +306,16 @@ const Header = () => {
                 </Button>
               </Flex>
             </form>
-            <Flex direction="column" mt={6} gap={4}>
+            <Flex direction="column" mt={6} gap={2}>
               {searchResults.map((u) => (
                 <Flex
                   key={u._id}
                   justifyContent="space-between"
                   alignItems="center"
+                  p={2}
+                  _hover={{ bg: hoverBg }}
+                  borderRadius="md"
+                  transition="all 0.2s"
                 >
                   <Flex
                     gap={3}
@@ -259,7 +323,7 @@ const Header = () => {
                     cursor="pointer"
                     onClick={() => {
                       onClose();
-                      window.location.href = `/${u.username}`;
+                      navigate(`/${u.username}`);
                     }}
                   >
                     <Avatar src={u.profilePic} name={u.name} />
@@ -270,6 +334,17 @@ const Header = () => {
                       </Text>
                     </Box>
                   </Flex>
+                  {u._id !== user._id && (
+                    <Button
+                      size="sm"
+                      borderRadius="full"
+                      colorScheme="blue"
+                      variant="outline"
+                      onClick={() => handleDirectMessage(u)}
+                    >
+                      Chat
+                    </Button>
+                  )}
                 </Flex>
               ))}
             </Flex>

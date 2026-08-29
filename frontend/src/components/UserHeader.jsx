@@ -16,14 +16,17 @@ import {
   useColorModeValue,
 } from "@chakra-ui/react";
 import { CgMoreO } from "react-icons/cg";
-import { useRecoilValue } from "recoil";
+import { useRecoilValue, useSetRecoilState } from "recoil";
 import userAtom from "../atoms/userAtom";
-import { Link as RouterLink } from "react-router-dom";
+import { selectedConversationAtom } from "../atoms/messagesAtom";
+import { Link as RouterLink, useNavigate } from "react-router-dom";
 import useFollowUnfollow from "../hooks/useFollowUnfollow";
 
 const UserHeader = ({ user }) => {
   const toast = useToast();
+  const navigate = useNavigate();
   const currentUser = useRecoilValue(userAtom);
+  const setSelectedConversation = useSetRecoilState(selectedConversationAtom);
   const { handleFollowUnfollow, following, updating } = useFollowUnfollow(user);
 
   const menuBg = useColorModeValue("white", "gray.dark");
@@ -33,7 +36,7 @@ const UserHeader = ({ user }) => {
     const currentURL = window.location.href;
     navigator.clipboard.writeText(currentURL).then(() => {
       toast({
-        title: "Success.",
+        title: "Success",
         status: "success",
         description: "Profile link copied.",
         duration: 3000,
@@ -41,7 +44,25 @@ const UserHeader = ({ user }) => {
       });
     });
   };
-
+  const handleDirectMessage = () => {
+    if (!currentUser) {
+      toast({
+        title: "Error",
+        status: "error",
+        description: "Please login to chat.",
+        duration: 3000,
+      });
+      return;
+    }
+    setSelectedConversation({
+      _id: Date.now(),
+      userId: user._id, // Explicitly mapped to user._id
+      username: user.username,
+      userProfilePic: user.profilePic,
+      mock: true,
+    });
+    navigate("/chat");
+  };
   return (
     <VStack gap={4} alignItems={"start"}>
       <Flex justifyContent={"space-between"} w={"full"}>
@@ -60,7 +81,6 @@ const UserHeader = ({ user }) => {
             >
               threads.net
             </Text>
-
             {user.role === "superadmin" && (
               <Badge colorScheme="red" p={1} borderRadius="md">
                 Super Admin
@@ -89,38 +109,59 @@ const UserHeader = ({ user }) => {
 
       <Text>{user.bio}</Text>
 
-      {currentUser?._id === user._id && (
-        <Link as={RouterLink} to="/update">
-          <Button size={"sm"}>Update Profile</Button>
-        </Link>
-      )}
-      {currentUser?._id !== user._id && (
-        <Button size={"sm"} onClick={handleFollowUnfollow} isLoading={updating}>
-          {following ? "Unfollow" : "Follow"}
-        </Button>
-      )}
-      <Flex w={"full"} justifyContent={"space-between"}>
+      <Flex gap={3} w="full">
+        {currentUser?._id === user._id ? (
+          <Link as={RouterLink} to="/update" style={{ textDecoration: "none" }}>
+            <Button size="md" borderRadius="full" px={6} colorScheme="gray">
+              Update Profile
+            </Button>
+          </Link>
+        ) : (
+          <>
+            <Button
+              size="md"
+              borderRadius="full"
+              px={8}
+              colorScheme={following ? "gray" : "blue"}
+              onClick={handleFollowUnfollow}
+              isLoading={updating}
+            >
+              {following ? "Unfollow" : "Follow"}
+            </Button>
+            <Button
+              size="md"
+              borderRadius="full"
+              px={8}
+              colorScheme="blue"
+              variant="outline"
+              onClick={handleDirectMessage}
+            >
+              Message
+            </Button>
+          </>
+        )}
+      </Flex>
+
+      <Flex w={"full"} justifyContent={"space-between"} alignItems="center">
         <Flex gap={2} alignItems={"center"}>
-          <Text color={"gray.light"}>{user.followers.length} followers</Text>
-          <Box w="1" h="1" bg={"gray.light"} borderRadius={"full"}></Box>
-          <Link color={"gray.light"}>instagram.com</Link>
+          <Text color={"gray.500"}>{user.followers.length} followers</Text>
+          <Box w="1" h="1" bg={"gray.500"} borderRadius={"full"}></Box>
+          <Link color={"gray.500"}>momentogram.com</Link>
         </Flex>
-        <Flex>
-          <Box className="icon-container">
-            <Menu>
-              <MenuButton>
-                <CgMoreO size={24} cursor={"pointer"} />
-              </MenuButton>
-              <Portal>
-                <MenuList bg={menuBg} color={textColor}>
-                  <MenuItem bg={menuBg} onClick={copyURL}>
-                    Copy link
-                  </MenuItem>
-                </MenuList>
-              </Portal>
-            </Menu>
-          </Box>
-        </Flex>
+        <Box className="icon-container">
+          <Menu>
+            <MenuButton>
+              <CgMoreO size={24} cursor={"pointer"} />
+            </MenuButton>
+            <Portal>
+              <MenuList bg={menuBg} color={textColor}>
+                <MenuItem bg={menuBg} onClick={copyURL}>
+                  Copy link
+                </MenuItem>
+              </MenuList>
+            </Portal>
+          </Menu>
+        </Box>
       </Flex>
     </VStack>
   );

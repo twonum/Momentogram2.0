@@ -1,14 +1,13 @@
 import {
-	Avatar,
-	AvatarBadge,
-	Box,
-	Flex,
-	Image,
-	Stack,
-	Text,
-	WrapItem,
-	useColorMode,
-	useColorModeValue,
+  Avatar,
+  AvatarBadge,
+  Box,
+  Flex,
+  Image,
+  Stack,
+  Text,
+  WrapItem,
+  useColorModeValue,
 } from "@chakra-ui/react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import userAtom from "../atoms/userAtom";
@@ -16,69 +15,94 @@ import { BsCheck2All, BsFillImageFill } from "react-icons/bs";
 import { selectedConversationAtom } from "../atoms/messagesAtom";
 
 const Conversation = ({ conversation, isOnline }) => {
-	const user = conversation.participants[0];
-	const currentUser = useRecoilValue(userAtom);
-	const lastMessage = conversation.lastMessage;
-	const [selectedConversation, setSelectedConversation] = useRecoilState(selectedConversationAtom);
-	const colorMode = useColorMode();
+  // Safe optional chaining to prevent undefined crashes on mock/new conversations
+  const user = conversation?.participants?.[0];
+  const currentUser = useRecoilValue(userAtom);
+  const lastMessage = conversation?.lastMessage;
+  const [selectedConversation, setSelectedConversation] = useRecoilState(
+    selectedConversationAtom,
+  );
 
-	console.log("selectedConverstion", selectedConversation);
-	return (
-		<Flex
-			gap={4}
-			alignItems={"center"}
-			p={"1"}
-			_hover={{
-				cursor: "pointer",
-				bg: useColorModeValue("gray.600", "gray.dark"),
-				color: "white",
-			}}
-			onClick={() =>
-				setSelectedConversation({
-					_id: conversation._id,
-					userId: user._id,
-					userProfilePic: user.profilePic,
-					username: user.username,
-					mock: conversation.mock,
-				})
-			}
-			bg={
-				selectedConversation?._id === conversation._id ? (colorMode === "light" ? "gray.400" : "gray.dark") : ""
-			}
-			borderRadius={"md"}
-		>
-			<WrapItem>
-				<Avatar
-					size={{
-						base: "xs",
-						sm: "sm",
-						md: "md",
-					}}
-					src={user.profilePic}
-				>
-					{isOnline ? <AvatarBadge boxSize='1em' bg='green.500' /> : ""}
-				</Avatar>
-			</WrapItem>
+  // If participant hasn't loaded yet, return null to prevent rendering errors
+  if (!user) return null;
 
-			<Stack direction={"column"} fontSize={"sm"}>
-				<Text fontWeight='700' display={"flex"} alignItems={"center"}>
-					{user.username} <Image src='/verified.png' w={4} h={4} ml={1} />
-				</Text>
-				<Text fontSize={"xs"} display={"flex"} alignItems={"center"} gap={1}>
-					{currentUser._id === lastMessage.sender ? (
-						<Box color={lastMessage.seen ? "blue.400" : ""}>
-							<BsCheck2All size={16} />
-						</Box>
-					) : (
-						""
-					)}
-					{lastMessage.text.length > 18
-						? lastMessage.text.substring(0, 18) + "..."
-						: lastMessage.text || <BsFillImageFill size={16} />}
-				</Text>
-			</Stack>
-		</Flex>
-	);
+  // Dynamic UI Colors for Light/Dark Mode
+  const isSelected = selectedConversation?._id === conversation._id;
+  const bgSelected = useColorModeValue("blue.100", "whiteAlpha.200");
+  const bgHover = useColorModeValue("gray.200", "whiteAlpha.100");
+  const textColor = useColorModeValue("black", "white");
+  const mutedTextColor = useColorModeValue("gray.600", "gray.400");
+
+  return (
+    <Flex
+      gap={4}
+      alignItems={"center"}
+      p={"3"}
+      borderRadius={"md"}
+      cursor={"pointer"}
+      color={textColor}
+      bg={isSelected ? bgSelected : "transparent"}
+      _hover={{ bg: isSelected ? bgSelected : bgHover }}
+      transition="all 0.2s ease"
+      onClick={() =>
+        setSelectedConversation({
+          _id: conversation._id,
+          userId: user._id,
+          userProfilePic: user.profilePic,
+          username: user.username,
+          mock: conversation.mock,
+        })
+      }
+    >
+      <WrapItem>
+        <Avatar size={{ base: "sm", md: "md" }} src={user.profilePic}>
+          {isOnline ? <AvatarBadge boxSize="1em" bg="green.500" /> : ""}
+        </Avatar>
+      </WrapItem>
+
+      <Stack
+        direction={"column"}
+        fontSize={"sm"}
+        spacing={1}
+        overflow="hidden"
+        w="full"
+      >
+        <Text
+          fontWeight="700"
+          display={"flex"}
+          alignItems={"center"}
+          isTruncated
+        >
+          {user.username} <Image src="/verified.png" w={4} h={4} ml={1} />
+        </Text>
+        <Text
+          fontSize={"xs"}
+          display={"flex"}
+          alignItems={"center"}
+          gap={1}
+          color={mutedTextColor}
+          isTruncated
+        >
+          {currentUser?._id === lastMessage?.sender ? (
+            <Box color={lastMessage?.seen ? "blue.400" : "gray.500"}>
+              <BsCheck2All size={16} />
+            </Box>
+          ) : (
+            ""
+          )}
+          {lastMessage?.text ? (
+            lastMessage.text.length > 25 ? (
+              lastMessage.text.substring(0, 25) + "..."
+            ) : (
+              lastMessage.text
+            )
+          ) : (
+            <BsFillImageFill size={16} />
+          )}
+        </Text>
+      </Stack>
+    </Flex>
+  );
 };
 
 export default Conversation;

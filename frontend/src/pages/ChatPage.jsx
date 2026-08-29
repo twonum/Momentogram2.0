@@ -34,6 +34,9 @@ const ChatPage = () => {
   const showToast = useShowToast();
   const { socket, onlineUsers } = useSocket();
 
+  const bgCard = useColorModeValue("white", "gray.dark");
+  const borderColor = useColorModeValue("gray.200", "whiteAlpha.100");
+
   useEffect(() => {
     socket?.on("messagesSeen", ({ conversationId }) => {
       setConversations((prev) => {
@@ -41,10 +44,7 @@ const ChatPage = () => {
           if (conversation._id === conversationId) {
             return {
               ...conversation,
-              lastMessage: {
-                ...conversation.lastMessage,
-                seen: true,
-              },
+              lastMessage: { ...conversation.lastMessage, seen: true },
             };
           }
           return conversation;
@@ -55,25 +55,29 @@ const ChatPage = () => {
   }, [socket, setConversations]);
 
   useEffect(() => {
-    // FIX: Clear the selection immediately on mount so the user list shows by default
-    setSelectedConversation({
-      _id: "",
-      userId: "",
-      username: "",
-      userProfilePic: "",
-    });
-
     const getConversations = async () => {
       try {
         const res = await fetch("/api/messages/conversations");
         const data = await res.json();
-
         if (data.error || data.message) {
           showToast("Error", data.error || data.message, "error");
           return;
         }
-        console.log(data);
-        setConversations(data);
+
+        // If a mock conversation was passed via atom from a profile click, handle it seamlessly
+        if (selectedConversation?.mock && selectedConversation?.userId) {
+          const exists = data.find(
+            (c) => c.participants[0]?._id === selectedConversation.userId,
+          );
+          if (!exists) {
+            setConversations([selectedConversation, ...data]);
+          } else {
+            setSelectedConversation(exists);
+            setConversations(data);
+          }
+        } else {
+          setConversations(data);
+        }
       } catch (error) {
         showToast("Error", error.message, "error");
       } finally {
@@ -82,7 +86,7 @@ const ChatPage = () => {
     };
 
     getConversations();
-  }, [showToast, setConversations, setSelectedConversation]);
+  }, [showToast, setConversations]);
 
   const handleConversationSearch = async (e) => {
     e.preventDefault();
@@ -96,14 +100,14 @@ const ChatPage = () => {
         return;
       }
 
-      const messagingYourself = searchedUser._id === currentUser._id;
-      if (messagingYourself) {
+      if (searchedUser._id === currentUser._id) {
         showToast("Error", "You cannot message yourself", "error");
         return;
       }
 
       const conversationAlreadyExists = conversations.find(
-        (conversation) => conversation.participants[0]._id === searchedUser._id,
+        (conversation) =>
+          conversation.participants[0]?._id === searchedUser._id,
       );
 
       if (conversationAlreadyExists) {
@@ -118,10 +122,7 @@ const ChatPage = () => {
 
       const mockConversation = {
         mock: true,
-        lastMessage: {
-          text: "",
-          sender: "",
-        },
+        lastMessage: { text: "", sender: "" },
         _id: Date.now(),
         participants: [
           {
@@ -131,7 +132,14 @@ const ChatPage = () => {
           },
         ],
       };
-      setConversations((prevConvs) => [...prevConvs, mockConversation]);
+      setConversations((prevConvs) => [mockConversation, ...prevConvs]);
+      setSelectedConversation({
+        _id: mockConversation._id,
+        userId: searchedUser._id,
+        username: searchedUser.username,
+        userProfilePic: searchedUser.profilePic,
+        mock: true,
+      });
     } catch (error) {
       showToast("Error", error.message, "error");
     } finally {
@@ -141,43 +149,52 @@ const ChatPage = () => {
 
   return (
     <Box
-      position={"absolute"}
-      left={"50%"}
-      w={{ base: "100%", md: "80%", lg: "750px" }}
-      p={4}
-      transform={"translateX(-50%)"}
+      position={"relative"}
+      w="full"
+      maxW="1000px"
+      mx="auto"
+      p={{ base: 2, md: 4 }}
     >
       <Flex
         gap={4}
         flexDirection={{ base: "column", md: "row" }}
-        maxW={{
-          sm: "400px",
-          md: "full",
-        }}
-        mx={"auto"}
+        bg={bgCard}
+        borderRadius="xl"
+        border="1px solid"
+        borderColor={borderColor}
+        overflow="hidden"
+        boxShadow="lg"
+        minH="600px"
       >
+        {/* Conversation Sidebar */}
         <Flex
-          flex={30}
-          gap={2}
+          flex={{ base: selectedConversation?._id ? "0 0 0px" : "1", md: "35" }}
+          display={{
+            base: selectedConversation?._id ? "none" : "flex",
+            md: "flex",
+          }}
+          gap={3}
           flexDirection={"column"}
-          maxW={{ sm: "250px", md: "full" }}
-          mx={"auto"}
+          p={4}
+          borderRight="1px solid"
+          borderColor={borderColor}
         >
-          <Text
-            fontWeight={700}
-            color={useColorModeValue("gray.600", "gray.400")}
-          >
-            Your Conversations
+          <Text fontWeight={700} fontSize="lg" mb={2}>
+            Messages
           </Text>
           <form onSubmit={handleConversationSearch}>
             <Flex alignItems={"center"} gap={2}>
               <Input
-                placeholder="Search for a user"
+                placeholder="Search user..."
+                borderRadius="full"
+                size="sm"
                 onChange={(e) => setSearchText(e.target.value)}
               />
               <Button
                 size={"sm"}
-                onClick={handleConversationSearch}
+                borderRadius="full"
+                colorScheme="blue"
+                type="submit"
                 isLoading={searchingUser}
               >
                 <SearchIcon />
@@ -186,18 +203,10 @@ const ChatPage = () => {
           </form>
 
           {loadingConversations &&
-            [0, 1, 2, 3, 4].map((_, i) => (
-              <Flex
-                key={i}
-                gap={4}
-                alignItems={"center"}
-                p={"1"}
-                borderRadius={"md"}
-              >
-                <Box>
-                  <SkeletonCircle size={"10"} />
-                </Box>
-                <Flex w={"full"} flexDirection={"column"} gap={3}>
+            [0, 1, 2, 3].map((_, i) => (
+              <Flex key={i} gap={4} alignItems={"center"} p={2}>
+                <SkeletonCircle size={"10"} />
+                <Flex w={"full"} flexDirection={"column"} gap={2}>
                   <Skeleton h={"10px"} w={"80px"} />
                   <Skeleton h={"8px"} w={"90%"} />
                 </Flex>
@@ -210,28 +219,42 @@ const ChatPage = () => {
               <Conversation
                 key={conversation._id}
                 isOnline={onlineUsers.includes(
-                  conversation.participants[0]._id,
+                  conversation.participants?.[0]?._id, // Added safe optional chaining here
                 )}
                 conversation={conversation}
               />
             ))}
         </Flex>
-        {!selectedConversation._id && (
-          <Flex
-            flex={70}
-            borderRadius={"md"}
-            p={2}
-            flexDir={"column"}
-            alignItems={"center"}
-            justifyContent={"center"}
-            height={"400px"}
-          >
-            <GiConversation size={100} />
-            <Text fontSize={20}>Select a conversation to start messaging</Text>
-          </Flex>
-        )}
 
-        {selectedConversation._id && <MessageContainer />}
+        {/* Chat Box Area */}
+        <Flex
+          flex={{ base: selectedConversation?._id ? "1" : "0 0 0px", md: "65" }}
+          display={{
+            base: selectedConversation?._id ? "flex" : "none",
+            md: "flex",
+          }}
+          flexDir="column"
+          justifyContent="center"
+          alignItems="center"
+        >
+          {!selectedConversation?._id ? (
+            <Flex
+              flexDir={"column"}
+              alignItems={"center"}
+              justifyContent={"center"}
+              height={"100%"}
+              p={6}
+              color="gray.500"
+            >
+              <GiConversation size={80} />
+              <Text fontSize="lg" fontWeight="500" mt={4}>
+                Select a conversation to start messaging
+              </Text>
+            </Flex>
+          ) : (
+            <MessageContainer />
+          )}
+        </Flex>
       </Flex>
     </Box>
   );
