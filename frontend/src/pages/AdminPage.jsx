@@ -20,6 +20,7 @@ import { useEffect, useState } from "react";
 import useShowToast from "../hooks/useShowToast";
 import { useRecoilValue } from "recoil";
 import userAtom from "../atoms/userAtom";
+import { useNavigate } from "react-router-dom";
 
 const AdminPage = () => {
   const [users, setUsers] = useState([]);
@@ -28,6 +29,7 @@ const AdminPage = () => {
   const [modsAllowed, setModsAllowed] = useState(false);
   const showToast = useShowToast();
   const currentUser = useRecoilValue(userAtom);
+  const navigate = useNavigate();
 
   const bgConfig = useColorModeValue("white", "gray.dark");
   const textColor = useColorModeValue("black", "white");
@@ -145,7 +147,7 @@ const AdminPage = () => {
                         src={u.profilePic}
                         name={u.username}
                         cursor="pointer"
-                        onClick={() => window.open(`/${u.username}`, "_blank")}
+                        onClick={() => navigate(`/${u.username}`)}
                       />
                       <Box overflow="hidden">
                         <Flex gap={2} alignItems="center" wrap="wrap">
@@ -153,9 +155,7 @@ const AdminPage = () => {
                             fontWeight="bold"
                             cursor="pointer"
                             isTruncated
-                            onClick={() =>
-                              window.open(`/${u.username}`, "_blank")
-                            }
+                            onClick={() => navigate(`/${u.username}`)}
                           >
                             {u.username}
                           </Text>

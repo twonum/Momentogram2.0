@@ -178,19 +178,50 @@ const MessageContainer = () => {
 
       setMessages((prev) => [...prev, data]);
 
+      // Immediately update conversation list sidebar in real time
       setConversations((prev) => {
+        let conversationExists = false;
         const updatedConversations = prev.map((conversation) => {
-          if (conversation._id === selectedConversation._id) {
+          if (
+            conversation._id === selectedConversation._id ||
+            conversation.participants?.[0]?._id === selectedConversation.userId
+          ) {
+            conversationExists = true;
             return {
               ...conversation,
+              mock: false, // clear mock flag since message is now saved in DB
               lastMessage: {
-                text: newMessage,
+                text: newMessage || "Sent an image",
                 sender: data.sender,
+                seen: false,
               },
             };
           }
           return conversation;
         });
+
+        if (!conversationExists) {
+          // If it was a brand new conversation not yet in sidebar array, prepend it
+          const newConv = {
+            _id: data.conversationId || Date.now(),
+            participants: [
+              {
+                _id: selectedConversation.userId,
+                username: selectedConversation.username,
+                profilePic:
+                  selectedConversation.userProfilePic ||
+                  selectedConversation.profilePic,
+              },
+            ],
+            lastMessage: {
+              text: newMessage || "Sent an image",
+              sender: data.sender,
+              seen: false,
+            },
+          };
+          return [newConv, ...updatedConversations];
+        }
+
         return updatedConversations;
       });
 

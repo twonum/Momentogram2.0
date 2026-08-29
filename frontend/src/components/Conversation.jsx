@@ -97,21 +97,21 @@ const Conversation = ({ conversation, isOnline, isCompact }) => {
         >
           {user.username} <Image src="/verified.png" w={4} h={4} ml={1} />
         </Text>
-        <Text
+        {/* Using Box instead of Text to prevent <div> inside <p> DOM nesting warning */}
+        <Box
           fontSize={"xs"}
           display={"flex"}
           alignItems={"center"}
           gap={1}
           color={mutedTextColor}
           isTruncated
+          as="div"
         >
           {currentUser?._id === lastMessage?.sender ? (
-            <Box color={lastMessage?.seen ? "blue.400" : "gray.500"}>
+            <Box as="span" color={lastMessage?.seen ? "blue.400" : "gray.500"}>
               <BsCheck2All size={16} />
             </Box>
-          ) : (
-            ""
-          )}
+          ) : null}
           {lastMessage?.text ? (
             lastMessage.text.length > 25 ? (
               lastMessage.text.substring(0, 25) + "..."
@@ -121,7 +121,7 @@ const Conversation = ({ conversation, isOnline, isCompact }) => {
           ) : (
             <BsFillImageFill size={16} />
           )}
-        </Text>
+        </Box>
       </Stack>
     </Flex>
   );

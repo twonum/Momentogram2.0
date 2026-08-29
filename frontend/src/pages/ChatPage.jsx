@@ -36,7 +36,6 @@ const ChatPage = () => {
   const showToast = useShowToast();
   const { socket, onlineUsers } = useSocket();
 
-  // Resizable Sidebar Width (Default = 350px)
   const [sidebarWidth, setSidebarWidth] = useState(350);
   const containerRef = useRef(null);
   const isResizing = useRef(false);
@@ -59,9 +58,7 @@ const ChatPage = () => {
     if (!isResizing.current || !containerRef.current) return;
     const containerRect = containerRef.current.getBoundingClientRect();
     const newWidth = e.clientX - containerRect.left;
-
-    // Boundaries: Min 88px (Avatar mode) to Max 500px
-    if (newWidth >= 88 && newWidth <= 500) {
+    if (newWidth >= 320 && newWidth <= 500) {
       setSidebarWidth(newWidth);
     }
   }, []);
@@ -71,8 +68,6 @@ const ChatPage = () => {
     document.removeEventListener("mousemove", resize);
     document.removeEventListener("mouseup", stopResizing);
   }, [resize]);
-
-  const isCompact = sidebarWidth < 230;
 
   useEffect(() => {
     socket?.on("messagesSeen", ({ conversationId }) => {
@@ -91,6 +86,7 @@ const ChatPage = () => {
     });
   }, [socket, setConversations]);
 
+  // Fetch conversations and instantly synchronize with any pre-selected user from profile/search
   useEffect(() => {
     const getConversations = async () => {
       try {
@@ -101,15 +97,22 @@ const ChatPage = () => {
           return;
         }
 
-        if (selectedConversation?.mock && selectedConversation?.userId) {
-          const exists = data.find(
+        if (selectedConversation?.userId) {
+          const existingConv = data.find(
             (c) => c.participants?.[0]?._id === selectedConversation.userId,
           );
-          if (!exists) {
-            setConversations([selectedConversation, ...data]);
-          } else {
-            setSelectedConversation(exists);
+          if (existingConv) {
+            // Prioritize existing conversation data
+            setSelectedConversation({
+              _id: existingConv._id,
+              userId: existingConv.participants[0]._id,
+              username: existingConv.participants[0].username,
+              userProfilePic: existingConv.participants[0].profilePic,
+            });
             setConversations(data);
+          } else {
+            // Keep the selected mock/new user active
+            setConversations([selectedConversation, ...data]);
           }
         } else {
           setConversations(data);
@@ -122,7 +125,7 @@ const ChatPage = () => {
     };
 
     getConversations();
-  }, [showToast, setConversations]);
+  }, [showToast, setConversations, selectedConversation?.userId]);
 
   const handleConversationSearch = async (e) => {
     e.preventDefault();
@@ -184,7 +187,6 @@ const ChatPage = () => {
   };
 
   return (
-    // Expanded full-width & full-height container layout
     <Box
       position={"relative"}
       w="full"
@@ -207,10 +209,9 @@ const ChatPage = () => {
         w="full"
         h="full"
       >
-        {/* Resizable Sidebar */}
         <Flex
           w={{ base: "full", md: `${sidebarWidth}px` }}
-          minW={{ md: "88px" }}
+          minW={{ md: "320px" }}
           maxW={{ md: "500px" }}
           display={{
             base: selectedConversation?._id ? "none" : "flex",
@@ -218,50 +219,45 @@ const ChatPage = () => {
           }}
           gap={3}
           flexDirection={"column"}
-          p={isCompact ? 2 : 5}
+          p={5}
           bg={sidebarBg}
           overflowY="auto"
           h="full"
           flexShrink={0}
-          transition="padding 0.2s ease"
         >
-          {!isCompact && (
-            <Text
-              fontWeight={800}
-              fontSize="2xl"
-              px={2}
-              pt={2}
-              pb={2}
-              tracking="tight"
-            >
-              Messages
-            </Text>
-          )}
+          <Text
+            fontWeight={800}
+            fontSize="2xl"
+            px={2}
+            pt={2}
+            pb={2}
+            tracking="tight"
+          >
+            Messages
+          </Text>
 
-          {!isCompact && (
-            <form onSubmit={handleConversationSearch}>
-              <InputGroup size="md" px={1}>
-                <InputLeftElement pointerEvents="none" h="full" pl={3}>
-                  <SearchIcon color="gray.400" boxSize={4} />
-                </InputLeftElement>
-                <Input
-                  placeholder="Search messages..."
-                  borderRadius="full"
-                  bg={inputBg}
-                  borderColor="transparent"
-                  _hover={{ borderColor: "gray.300" }}
-                  _focus={{
-                    bg: "transparent",
-                    borderColor: "blue.400",
-                    boxShadow: "none",
-                  }}
-                  pl={10}
-                  py={5}
-                  onChange={(e) => setSearchText(e.target.value)}
-                />
-              </InputGroup>
-            </form>
-          )}
+          <form onSubmit={handleConversationSearch}>
+            <InputGroup size="md" px={1}>
+              <InputLeftElement pointerEvents="none" h="full" pl={3}>
+                <SearchIcon color="gray.400" boxSize={4} />
+              </InputLeftElement>
+              <Input
+                placeholder="Search messages..."
+                borderRadius="full"
+                bg={inputBg}
+                borderColor="transparent"
+                _hover={{ borderColor: "gray.300" }}
+                _focus={{
+                  bg: "transparent",
+                  borderColor: "blue.400",
+                  boxShadow: "none",
+                }}
+                pl={10}
+                py={5}
+                onChange={(e) => setSearchText(e.target.value)}
+              />
+            </InputGroup>
+          </form>
 
           <Box mt={2} overflowY="auto" flex={1}>
             {loadingConversations &&
@@ -273,15 +269,12 @@ const ChatPage = () => {
                   p={3}
                   mb={1}
                   borderRadius="xl"
-                  justify={isCompact ? "center" : "flex-start"}
                 >
                   <SkeletonCircle size={"12"} />
-                  {!isCompact && (
-                    <Flex w={"full"} flexDirection={"column"} gap={2}>
-                      <Skeleton h={"12px"} w={"100px"} borderRadius="md" />
-                      <Skeleton h={"10px"} w={"75%"} borderRadius="md" />
-                    </Flex>
-                  )}
+                  <Flex w={"full"} flexDirection={"column"} gap={2}>
+                    <Skeleton h={"12px"} w={"100px"} borderRadius="md" />
+                    <Skeleton h={"10px"} w={"75%"} borderRadius="md" />
+                  </Flex>
                 </Flex>
               ))}
 
@@ -294,14 +287,12 @@ const ChatPage = () => {
                       conversation.participants?.[0]?._id,
                     )}
                     conversation={conversation}
-                    isCompact={isCompact}
                   />
                 </Box>
               ))}
           </Box>
         </Flex>
 
-        {/* Draggable Divider Handle */}
         <Box
           display={{ base: "none", md: "flex" }}
           w="6px"
@@ -317,7 +308,6 @@ const ChatPage = () => {
           <Box w="1px" h="30px" bg="gray.400" />
         </Box>
 
-        {/* Immersive Full-Size Chat Area */}
         <Flex
           flex={1}
           display={{
