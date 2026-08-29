@@ -57,13 +57,11 @@ const Header = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [notifications, setNotifications] = useState([]);
 
-  // ALL HOOKS EXTRACTED - Fixed the "Rules of Hooks" Crash
   const hoverBg = useColorModeValue("gray.100", "gray.700");
   const menuBg = useColorModeValue("white", "gray.dark");
   const notifBorderColor = useColorModeValue("gray.100", "whiteAlpha.100");
   const unreadBgColor = useColorModeValue("blue.50", "whiteAlpha.50");
   const hoverItemBgColor = useColorModeValue("gray.100", "whiteAlpha.200");
-  const inputBgColor = useColorModeValue("white", "whiteAlpha.150");
 
   const unreadCount = notifications.filter((n) => !n.read).length;
   const showBackButton = location.pathname !== "/";
@@ -234,7 +232,8 @@ const Header = () => {
                   </Flex>
                 </MenuButton>
                 <MenuList
-                  maxH="300px"
+                  maxH="350px"
+                  minW="280px"
                   overflowY="auto"
                   p={2}
                   borderRadius="xl"
@@ -264,6 +263,17 @@ const Header = () => {
                   ) : (
                     notifications.map((notif) => {
                       if (!notif || !notif.sender) return null;
+
+                      // DYNAMIC NOTIFICATION TEXT LOGIC
+                      let notifText = "interacted with your post";
+                      if (notif.type === "follow")
+                        notifText = "started following you";
+                      if (notif.type === "like") notifText = "liked your post";
+                      if (notif.type === "reply")
+                        notifText = "replied to your post";
+                      if (notif.type === "repost")
+                        notifText = "reposted your post";
+
                       return (
                         <MenuItem
                           key={notif._id}
@@ -282,8 +292,7 @@ const Header = () => {
                           />
                           <Box>
                             <Text fontSize="sm">
-                              <b>{notif.sender.username}</b> started following
-                              you
+                              <b>{notif.sender.username}</b> {notifText}
                             </Text>
                             <Text fontSize="xs" color="gray.500" mt={0.5}>
                               {new Date(notif.createdAt).toLocaleDateString()}
@@ -329,7 +338,6 @@ const Header = () => {
         </Link>
       )}
 
-      {/* POLISHED SEARCH MODAL */}
       <Modal isOpen={isOpen} onClose={onClose} size="md" isCentered>
         <ModalOverlay backdropFilter="blur(3px)" />
         <ModalContent

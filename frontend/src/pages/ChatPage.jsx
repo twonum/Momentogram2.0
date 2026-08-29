@@ -36,15 +36,18 @@ const ChatPage = () => {
   const showToast = useShowToast();
   const { socket, onlineUsers } = useSocket();
 
-  // Increased default sidebar width slightly to match a wider screen aesthetic
   const [sidebarWidth, setSidebarWidth] = useState(380);
   const containerRef = useRef(null);
   const isResizing = useRef(false);
 
+  // ALL HOOKS MUST BE AT THE TOP LEVEL
   const bgCard = useColorModeValue("white", "gray.900");
   const borderColor = useColorModeValue("gray.200", "whiteAlpha.200");
   const dividerColor = useColorModeValue("blue.400", "blue.500");
   const sidebarBg = useColorModeValue("white", "gray.900");
+  const searchInputBg = useColorModeValue("gray.50", "whiteAlpha.50");
+  const rightPanelBg = useColorModeValue("white", "gray.900");
+  const emptyChatBg = useColorModeValue("blue.50", "whiteAlpha.50");
 
   const startResizing = useCallback((e) => {
     e.preventDefault();
@@ -247,7 +250,7 @@ const ChatPage = () => {
                 <Input
                   placeholder="Search messages..."
                   borderRadius="full"
-                  bg={useColorModeValue("gray.50", "whiteAlpha.50")}
+                  bg={searchInputBg}
                   border="none"
                   pl={10}
                   py={5}
@@ -307,7 +310,7 @@ const ChatPage = () => {
             base: selectedConversation?._id ? "block" : "none",
             md: "block",
           }}
-          bg={useColorModeValue("white", "gray.900")}
+          bg={rightPanelBg}
           overflow="hidden"
         >
           {!selectedConversation?._id ? (
@@ -321,7 +324,7 @@ const ChatPage = () => {
             >
               <Box
                 p={6}
-                bg={useColorModeValue("blue.50", "whiteAlpha.50")}
+                bg={emptyChatBg}
                 borderRadius="full"
                 mb={4}
                 color="blue.400"

@@ -1,72 +1,30 @@
-import {
-  Avatar,
-  Box,
-  Flex,
-  Text,
-  Badge,
-  Link,
-  VStack,
-  Button,
-  useToast,
-  Menu,
-  MenuButton,
-  MenuItem,
-  MenuList,
-  Portal,
-  useColorModeValue,
-  useDisclosure,
-  Modal,
-  ModalOverlay,
-  ModalContent,
-  ModalHeader,
-  ModalCloseButton,
-  ModalBody,
-  Spinner,
-} from "@chakra-ui/react";
+import { Avatar } from "@chakra-ui/avatar";
+import { Box, Flex, Link, Text, VStack } from "@chakra-ui/layout";
+import { Menu, MenuButton, MenuItem, MenuList } from "@chakra-ui/menu";
+import { Portal } from "@chakra-ui/portal";
+import { Button, useToast, useColorModeValue } from "@chakra-ui/react";
+import { BsInstagram } from "react-icons/bs";
 import { CgMoreO } from "react-icons/cg";
-import { BsInstagram, BsLinkedin, BsGlobe } from "react-icons/bs";
-import { useRecoilValue, useSetRecoilState } from "recoil";
+import { useRecoilValue } from "recoil";
 import userAtom from "../atoms/userAtom";
-import {
-  selectedConversationAtom,
-  conversationsAtom,
-} from "../atoms/messagesAtom";
-import { Link as RouterLink, useNavigate } from "react-router-dom";
-import useFollowUnfollow from "../hooks/useFollowUnfollow";
+import { Link as RouterLink } from "react-router-dom";
 import { useState } from "react";
+import useShowToast from "../hooks/useShowToast";
 
 const UserHeader = ({ user }) => {
   const toast = useToast();
-  const navigate = useNavigate();
   const currentUser = useRecoilValue(userAtom);
-  const conversations = useRecoilValue(conversationsAtom);
-  const setSelectedConversation = useSetRecoilState(selectedConversationAtom);
-  const { handleFollowUnfollow, following, updating } = useFollowUnfollow(user);
-
-  // Modal states for Followers & Following lists
-  const {
-    isOpen: isFollowersOpen,
-    onOpen: onFollowersOpen,
-    onClose: onFollowersClose,
-  } = useDisclosure();
-  const {
-    isOpen: isFollowingOpen,
-    onOpen: onFollowingOpen,
-    onClose: onFollowingClose,
-  } = useDisclosure();
-  const [modalUsers, setModalUsers] = useState([]);
-  const [loadingModal, setLoadingModal] = useState(false);
-
-  const menuBg = useColorModeValue("white", "gray.dark");
-  const textColor = useColorModeValue("black", "white");
-  const badgeBg = useColorModeValue("gray.100", "whiteAlpha.200");
-  const badgeColor = useColorModeValue("gray.700", "gray.300");
+  const [following, setFollowing] = useState(
+    user.followers.includes(currentUser?._id),
+  );
+  const [updating, setUpdating] = useState(false);
+  const showToast = useShowToast();
 
   const copyURL = () => {
     const currentURL = window.location.href;
     navigator.clipboard.writeText(currentURL).then(() => {
       toast({
-        title: "Success",
+        title: "Success.",
         status: "success",
         description: "Profile link copied.",
         duration: 3000,
@@ -75,404 +33,186 @@ const UserHeader = ({ user }) => {
     });
   };
 
-  const handleDirectMessage = () => {
+  const handleFollowUnfollow = async () => {
     if (!currentUser) {
-      toast({
-        title: "Error",
-        status: "error",
-        description: "Please login to chat.",
-        duration: 3000,
-      });
+      showToast("Error", "Please login to follow", "error");
       return;
     }
-    const targetId = user?._id || user?.id;
-    if (!targetId) return;
+    if (updating) return;
 
-    const existingConv = conversations.find(
-      (c) => c.participants?.[0]?._id === targetId,
-    );
-
-    if (existingConv) {
-      setSelectedConversation({
-        _id: existingConv._id,
-        userId: targetId,
-        username: user.username,
-        userProfilePic: user.profilePic,
-        mock: false,
-      });
-    } else {
-      setSelectedConversation({
-        _id: Date.now(),
-        userId: targetId,
-        username: user.username,
-        userProfilePic: user.profilePic,
-        mock: true,
-      });
-    }
-    navigate("/chat");
-  };
-
-  const fetchUserList = async (ids) => {
-    if (!ids || ids.length === 0) {
-      setModalUsers([]);
-      return;
-    }
-    setLoadingModal(true);
+    setUpdating(true);
     try {
-      const res = await fetch("/api/users/list", {
+      const res = await fetch(`/api/users/follow/${user._id}`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ids }),
+        headers: {
+          "Content-Type": "application/json",
+        },
       });
       const data = await res.json();
-      if (data.error) throw new Error(data.error);
-      setModalUsers(data);
+      if (data.error) {
+        showToast("Error", data.error, "error");
+        return;
+      }
+
+      if (following) {
+        showToast("Success", `Unfollowed ${user.name}`, "success");
+        user.followers.pop();
+      } else {
+        showToast("Success", `Followed ${user.name}`, "success");
+        user.followers.push(currentUser?._id);
+      }
+      setFollowing(!following);
     } catch (error) {
-      toast({
-        title: "Error",
-        status: "error",
-        description: error.message,
-        duration: 3000,
-      });
+      showToast("Error", error.message, "error");
     } finally {
-      setLoadingModal(false);
+      setUpdating(false);
     }
   };
 
-  // Follow Back Logic Detection
-  const isMe = currentUser?._id === user._id;
-  const iFollowThem = currentUser?.following?.includes(user._id);
-  const theyFollowMe = user?.followers?.includes(currentUser?._id);
+  // Smart Button Logic
+  const isFollowingMe =
+    user.following?.includes(currentUser?._id) ||
+    currentUser?.followers?.includes(user._id);
 
-  let followButtonText = "Follow";
-  if (iFollowThem) {
-    followButtonText = "Following";
-  } else if (theyFollowMe && !iFollowThem) {
-    followButtonText = "Follow Back";
+  let buttonText = "Follow";
+  let buttonVariant = "solid";
+  let buttonColor = "blue";
+
+  if (following) {
+    buttonText = "Following";
+    buttonVariant = "outline";
+    buttonColor = "gray";
+  } else if (isFollowingMe) {
+    buttonText = "Follow Back";
+    buttonVariant = "solid";
+    buttonColor = "blue";
   }
 
   return (
-    <VStack
-      gap={5}
-      alignItems={"start"}
-      w="full"
-      p={6}
-      bg={useColorModeValue("white", "gray.dark")}
-      borderRadius="2xl"
-      boxShadow="sm"
-      border="1px solid"
-      borderColor={useColorModeValue("gray.100", "whiteAlpha.100")}
-    >
-      <Flex justifyContent={"space-between"} w={"full"} alignItems="center">
+    <VStack gap={4} alignItems={"start"}>
+      <Flex justifyContent={"space-between"} w={"full"}>
         <Box>
-          <Text fontSize={"2xl"} fontWeight={"bold"} letterSpacing="tight">
+          <Text fontSize={"2xl"} fontWeight={"bold"}>
             {user.name}
           </Text>
-          <Flex gap={2} alignItems={"center"} mt={1} wrap="wrap">
-            <Text fontSize={"sm"} color="gray.500">
+          <Flex gap={2} alignItems={"center"}>
+            <Text fontSize={"sm"} color={"gray.500"} fontWeight={"medium"}>
               @{user.username}
             </Text>
-            <Flex
-              alignItems="center"
-              gap={1.5}
+            <Text
+              fontSize={"2xs"}
+              bg={useColorModeValue("blackAlpha.100", "whiteAlpha.200")}
+              color={useColorModeValue("gray.600", "gray.300")}
               px={2.5}
               py={0.5}
-              bg={badgeBg}
-              color={badgeColor}
-              borderRadius="full"
-              fontSize="xs"
-              fontWeight="500"
+              borderRadius={"full"}
+              letterSpacing={"wide"}
             >
-              <Box w={1.5} h={1.5} borderRadius="full" bg="blue.400" />
-              threads.net
-            </Flex>
+              momentogram.net
+            </Text>
 
+            {/* Admin Badges */}
             {user.role === "superadmin" && (
-              <Badge colorScheme="red" px={2} py={0.5} borderRadius="md">
-                Super Admin
-              </Badge>
+              <Text
+                fontSize={"2xs"}
+                bg={"red.500"}
+                color={"white"}
+                px={2}
+                py={0.5}
+                borderRadius={"full"}
+                fontWeight="bold"
+              >
+                SUPER ADMIN
+              </Text>
             )}
             {user.role === "admin" && (
-              <Badge colorScheme="green" px={2} py={0.5} borderRadius="md">
-                Admin
-              </Badge>
-            )}
-            {user.role === "user" && (
-              <Badge colorScheme="gray" px={2} py={0.5} borderRadius="md">
-                Standard User
-              </Badge>
+              <Text
+                fontSize={"2xs"}
+                bg={"green.500"}
+                color={"white"}
+                px={2}
+                py={0.5}
+                borderRadius={"full"}
+                fontWeight="bold"
+              >
+                ADMIN
+              </Text>
             )}
           </Flex>
         </Box>
-        <Avatar
-          name={user.name}
-          src={user.profilePic || "https://bit.ly/broken-link"}
-          size={{ base: "lg", md: "xl" }}
-          boxShadow="md"
-        />
-      </Flex>
-
-      {user.bio && (
-        <Text fontSize="sm" color={useColorModeValue("gray.700", "gray.200")}>
-          {user.bio}
-        </Text>
-      )}
-
-      {/* Social Links Row */}
-      <Flex gap={3} alignItems="center" wrap="wrap">
-        {user.instagramLink && (
-          <Link
-            href={user.instagramLink}
-            isExternal
-            display="flex"
-            alignItems="center"
-            gap={1}
-            fontSize="xs"
-            color="pink.500"
-            fontWeight="600"
-          >
-            <BsInstagram size={14} /> Instagram
-          </Link>
-        )}
-        {user.linkedinLink && (
-          <Link
-            href={user.linkedinLink}
-            isExternal
-            display="flex"
-            alignItems="center"
-            gap={1}
-            fontSize="xs"
-            color="blue.500"
-            fontWeight="600"
-          >
-            <BsLinkedin size={14} /> LinkedIn
-          </Link>
-        )}
-        {user.websiteUrl && (
-          <Link
-            href={user.websiteUrl}
-            isExternal
-            display="flex"
-            alignItems="center"
-            gap={1}
-            fontSize="xs"
-            color="teal.500"
-            fontWeight="600"
-          >
-            <BsGlobe size={14} /> Website
-          </Link>
-        )}
-      </Flex>
-
-      {!isMe && (
-        <Flex gap={3} w="full">
-          <Button
-            flex={1}
-            size="md"
-            borderRadius="full"
-            fontWeight="600"
-            colorScheme={iFollowThem ? "gray" : "blue"}
-            variant={iFollowThem ? "outline" : "solid"}
-            onClick={handleFollowUnfollow}
-            isLoading={updating}
-          >
-            {followButtonText}
-          </Button>
-          <Button
-            flex={1}
-            size="md"
-            borderRadius="full"
-            fontWeight="600"
-            colorScheme="blue"
-            variant="outline"
-            onClick={handleDirectMessage}
-          >
-            Message
-          </Button>
-        </Flex>
-      )}
-
-      {isMe && (
-        <Link
-          as={RouterLink}
-          to="/update"
-          style={{ width: "100%", textDecoration: "none" }}
-        >
-          <Button
-            w="full"
-            size="md"
-            borderRadius="full"
-            fontWeight="600"
-            variant="outline"
-          >
-            Edit Profile
-          </Button>
-        </Link>
-      )}
-
-      <Flex
-        w={"full"}
-        justifyContent={"space-between"}
-        alignItems="center"
-        pt={1}
-      >
-        <Flex gap={4} alignItems={"center"} fontSize="sm">
-          <Text
-            color={"gray.500"}
-            fontWeight="500"
-            cursor="pointer"
-            _hover={{ textDecoration: "underline" }}
-            onClick={() => {
-              fetchUserList(user.followers);
-              onFollowersOpen();
-            }}
-          >
-            <b>{user.followers?.length || 0}</b> followers
-          </Text>
-          <Box w="1" h="1" bg={"gray.400"} borderRadius={"full"}></Box>
-          <Text
-            color={"gray.500"}
-            fontWeight="500"
-            cursor="pointer"
-            _hover={{ textDecoration: "underline" }}
-            onClick={() => {
-              fetchUserList(user.following);
-              onFollowingOpen();
-            }}
-          >
-            <b>{user.following?.length || 0}</b> following
-          </Text>
-        </Flex>
-        <Box className="icon-container">
-          <Menu>
-            <MenuButton
-              as={Button}
-              variant="ghost"
-              size="sm"
-              borderRadius="full"
-              p={0}
-            >
-              <CgMoreO size={22} />
-            </MenuButton>
-            <Portal>
-              <MenuList
-                bg={menuBg}
-                color={textColor}
-                boxShadow="lg"
-                borderRadius="xl"
-              >
-                <MenuItem bg={menuBg} onClick={copyURL} fontWeight="500">
-                  Copy profile link
-                </MenuItem>
-              </MenuList>
-            </Portal>
-          </Menu>
+        <Box>
+          {user.profilePic && (
+            <Avatar
+              name={user.name}
+              src={user.profilePic}
+              size={{
+                base: "md",
+                md: "xl",
+              }}
+            />
+          )}
+          {!user.profilePic && (
+            <Avatar
+              name={user.name}
+              src="https://bit.ly/broken-link"
+              size={{
+                base: "md",
+                md: "xl",
+              }}
+            />
+          )}
         </Box>
       </Flex>
 
-      {/* Followers Modal */}
-      <Modal
-        isOpen={isFollowersOpen}
-        onClose={onFollowersClose}
-        size="sm"
-        isCentered
-      >
-        <ModalOverlay />
-        <ModalContent borderRadius="2xl">
-          <ModalHeader fontWeight="bold">Followers</ModalHeader>
-          <ModalCloseButton />
-          <ModalBody pb={6}>
-            {loadingModal ? (
-              <Flex justify="center" py={6}>
-                <Spinner />
-              </Flex>
-            ) : modalUsers.length === 0 ? (
-              <Text textAlign="center" color="gray.500" py={4}>
-                No followers yet.
-              </Text>
-            ) : (
-              <VStack gap={3} align="stretch">
-                {modalUsers.map((u) => (
-                  <Flex
-                    key={u._id}
-                    justify="space-between"
-                    align="center"
-                    cursor="pointer"
-                    onClick={() => {
-                      onFollowersClose();
-                      navigate(`/${u.username}`);
-                    }}
-                  >
-                    <Flex gap={3} align="center">
-                      <Avatar src={u.profilePic} size="sm" />
-                      <Box>
-                        <Text fontWeight="bold" fontSize="sm">
-                          {u.username}
-                        </Text>
-                        <Text fontSize="xs" color="gray.500">
-                          {u.name}
-                        </Text>
-                      </Box>
-                    </Flex>
-                  </Flex>
-                ))}
-              </VStack>
-            )}
-          </ModalBody>
-        </ModalContent>
-      </Modal>
+      <Text>{user.bio}</Text>
 
-      {/* Following Modal */}
-      <Modal
-        isOpen={isFollowingOpen}
-        onClose={onFollowingClose}
-        size="sm"
-        isCentered
-      >
-        <ModalOverlay />
-        <ModalContent borderRadius="2xl">
-          <ModalHeader fontWeight="bold">Following</ModalHeader>
-          <ModalCloseButton />
-          <ModalBody pb={6}>
-            {loadingModal ? (
-              <Flex justify="center" py={6}>
-                <Spinner />
-              </Flex>
-            ) : modalUsers.length === 0 ? (
-              <Text textAlign="center" color="gray.500" py={4}>
-                Not following anyone yet.
-              </Text>
-            ) : (
-              <VStack gap={3} align="stretch">
-                {modalUsers.map((u) => (
-                  <Flex
-                    key={u._id}
-                    justify="space-between"
-                    align="center"
-                    cursor="pointer"
-                    onClick={() => {
-                      onFollowingClose();
-                      navigate(`/${u.username}`);
-                    }}
+      {currentUser?._id === user._id && (
+        <Link as={RouterLink} to="/update">
+          <Button size={"sm"}>Update Profile</Button>
+        </Link>
+      )}
+
+      {currentUser?._id !== user._id && (
+        <Button
+          size={"sm"}
+          onClick={handleFollowUnfollow}
+          isLoading={updating}
+          colorScheme={buttonColor}
+          variant={buttonVariant}
+        >
+          {buttonText}
+        </Button>
+      )}
+
+      <Flex w={"full"} justifyContent={"space-between"}>
+        <Flex gap={2} alignItems={"center"}>
+          <Text color={"gray.light"}>{user.followers.length} followers</Text>
+          <Box w="1" h="1" bg={"gray.light"} borderRadius={"full"}></Box>
+          <Text color={"gray.light"}>{user.following.length} following</Text>
+        </Flex>
+        <Flex>
+          <Box className="icon-container">
+            <BsInstagram size={24} cursor={"pointer"} />
+          </Box>
+          <Box className="icon-container">
+            <Menu>
+              <MenuButton>
+                <CgMoreO size={24} cursor={"pointer"} />
+              </MenuButton>
+              <Portal>
+                <MenuList bg={useColorModeValue("gray.200", "gray.dark")}>
+                  <MenuItem
+                    bg={useColorModeValue("gray.200", "gray.dark")}
+                    onClick={copyURL}
                   >
-                    <Flex gap={3} align="center">
-                      <Avatar src={u.profilePic} size="sm" />
-                      <Box>
-                        <Text fontWeight="bold" fontSize="sm">
-                          {u.username}
-                        </Text>
-                        <Text fontSize="xs" color="gray.500">
-                          {u.name}
-                        </Text>
-                      </Box>
-                    </Flex>
-                  </Flex>
-                ))}
-              </VStack>
-            )}
-          </ModalBody>
-        </ModalContent>
-      </Modal>
+                    Copy link
+                  </MenuItem>
+                </MenuList>
+              </Portal>
+            </Menu>
+          </Box>
+        </Flex>
+      </Flex>
     </VStack>
   );
 };

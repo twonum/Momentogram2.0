@@ -1,5 +1,6 @@
 import Post from "../models/postModel.js";
 import User from "../models/userModel.js";
+import Notification from "../models/notificationModel.js"; // IMPORT NOTIFICATIONS
 import { v2 as cloudinary } from "cloudinary";
 
 export const createPost = async (req, res) => {
@@ -7,9 +8,7 @@ export const createPost = async (req, res) => {
 		const { postedBy, text } = req.body;
 		let { img } = req.body;
 
-		if (!postedBy || !text) {
-			return res.status(400).json({ error: "Postedby and text fields are required" });
-		}
+		if (!postedBy || !text) return res.status(400).json({ error: "Postedby and text fields are required" });
 
 		const user = await User.findById(postedBy);
 		if (!user) return res.status(404).json({ error: "User not found" });
@@ -19,9 +18,7 @@ export const createPost = async (req, res) => {
 		}
 
 		const maxLength = 500;
-		if (text.length > maxLength) {
-			return res.status(400).json({ error: `Text must be less than ${maxLength} characters` });
-		}
+		if (text.length > maxLength) return res.status(400).json({ error: `Text must be less than ${maxLength} characters` });
 
 		if (img) {
 			const uploadedResponse = await cloudinary.uploader.upload(img, { resource_type: "auto" });
@@ -53,15 +50,11 @@ export const deletePost = async (req, res) => {
 		const post = await Post.findById(req.params.id);
 		if (!post) return res.status(404).json({ error: "Post not found" });
 
-		// Allow deletion if the user is the original author OR if they are the reposter
 		const isOriginalAuthor = post.postedBy.toString() === req.user._id.toString();
 		const isReposter = post.repostedBy && post.repostedBy.toString() === req.user._id.toString();
 
-		if (!isOriginalAuthor && !isReposter) {
-			return res.status(401).json({ error: "Unauthorized to delete post" });
-		}
+		if (!isOriginalAuthor && !isReposter) return res.status(401).json({ error: "Unauthorized to delete post" });
 
-		// Only delete image from Cloudinary if it's the original post being deleted, not a repost
 		if (post.img && !post.repostedBy) {
 			const imgId = post.img.split("/").pop().split(".")[0];
 			await cloudinary.uploader.destroy(imgId).catch(console.error);
@@ -90,6 +83,12 @@ export const likeUnlikePost = async (req, res) => {
 		} else {
 			post.likes.push(userId);
 			await post.save();
+
+			// TRIGGER LIKE NOTIFICATION
+			if (post.postedBy.toString() !== userId.toString()) {
+				const notification = new Notification({ type: "like", sender: userId, recipient: post.postedBy });
+				await notification.save();
+			}
 			res.status(200).json({ message: "Post liked successfully" });
 		}
 	} catch (err) {
@@ -114,6 +113,12 @@ export const replyToPost = async (req, res) => {
 		post.replies.push(reply);
 		await post.save();
 
+		// TRIGGER REPLY NOTIFICATION
+		if (post.postedBy.toString() !== userId.toString()) {
+			const notification = new Notification({ type: "reply", sender: userId, recipient: post.postedBy });
+			await notification.save();
+		}
+
 		res.status(200).json(reply);
 	} catch (err) {
 		res.status(500).json({ error: err.message });
@@ -129,15 +134,21 @@ export const repostPost = async (req, res) => {
 		if (!originalPost) return res.status(404).json({ error: "Post not found" });
 
 		const newPost = new Post({
-			postedBy: originalPost.postedBy, // Keep original author
+			postedBy: originalPost.postedBy,
 			text: originalPost.text,
 			img: originalPost.img,
 			repostedFrom: originalPost._id,
-			repostedBy: userId, // Track the reposter
+			repostedBy: userId,
 		});
 
 		await newPost.save();
 		await newPost.populate("repostedBy", "username profilePic");
+
+		// TRIGGER REPOST NOTIFICATION
+		if (originalPost.postedBy.toString() !== userId.toString()) {
+			const notification = new Notification({ type: "repost", sender: userId, recipient: originalPost.postedBy });
+			await notification.save();
+		}
 
 		res.status(201).json(newPost);
 	} catch (error) {
