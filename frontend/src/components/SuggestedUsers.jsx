@@ -14,8 +14,10 @@ const SuggestedUsers = () => {
       try {
         const res = await fetch("/api/users/suggested");
         const data = await res.json();
-        if (data.error) {
-          showToast("Error", data.error, "error");
+
+        // Prevent setting the unauthorized object as the state
+        if (data.error || data.message) {
+          showToast("Error", data.error || data.message, "error");
           return;
         }
         setSuggestedUsers(data);
@@ -36,7 +38,8 @@ const SuggestedUsers = () => {
       </Text>
       <Flex direction={"column"} gap={4}>
         {!loading &&
-          suggestedUsers?.map((user) => (
+          Array.isArray(suggestedUsers) &&
+          suggestedUsers.map((user) => (
             <SuggestedUser key={user._id} user={user} />
           ))}
         {loading &&
@@ -69,21 +72,3 @@ const SuggestedUsers = () => {
 };
 
 export default SuggestedUsers;
-
-// Loading skeletons for suggested users, if u want to copy and paste as shown in the tutorial
-
-// <Flex key={idx} gap={2} alignItems={"center"} p={"1"} borderRadius={"md"}>
-// 							{/* avatar skeleton */}
-// 							<Box>
-// 								<SkeletonCircle size={"10"} />
-// 							</Box>
-// 							{/* username and fullname skeleton */}
-// 							<Flex w={"full"} flexDirection={"column"} gap={2}>
-// 								<Skeleton h={"8px"} w={"80px"} />
-// 								<Skeleton h={"8px"} w={"90px"} />
-// 							</Flex>
-// 							{/* follow button skeleton */}
-// 							<Flex>
-// 								<Skeleton h={"20px"} w={"60px"} />
-// 							</Flex>
-// 						</Flex>

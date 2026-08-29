@@ -22,6 +22,14 @@ const UserPage = () => {
       try {
         const res = await fetch(`/api/posts/user/${username}`);
         const data = await res.json();
+
+        // Catch unauthorized/server errors before trying to set the state
+        if (data.error || data.message) {
+          showToast("Error", data.error || data.message, "error");
+          setPosts([]);
+          return;
+        }
+
         console.log(data);
         setPosts(data);
       } catch (error) {
@@ -49,16 +57,19 @@ const UserPage = () => {
     <>
       <UserHeader user={user} />
 
-      {!fetchingPosts && posts.length === 0 && <h1>User has not posts.</h1>}
+      {!fetchingPosts && Array.isArray(posts) && posts.length === 0 && (
+        <h1>User has no posts.</h1>
+      )}
       {fetchingPosts && (
         <Flex justifyContent={"center"} my={12}>
           <Spinner size={"xl"} />
         </Flex>
       )}
 
-      {posts?.map((post) => (
-        <Post key={post._id} post={post} postedBy={post.postedBy} />
-      ))}
+      {Array.isArray(posts) &&
+        posts.map((post) => (
+          <Post key={post._id} post={post} postedBy={post.postedBy} />
+        ))}
     </>
   );
 };

@@ -10,6 +10,7 @@ const HomePage = () => {
   const [posts, setPosts] = useRecoilState(postsAtom);
   const [loading, setLoading] = useState(true);
   const showToast = useShowToast();
+
   useEffect(() => {
     const getFeedPosts = async () => {
       setLoading(true);
@@ -17,8 +18,10 @@ const HomePage = () => {
       try {
         const res = await fetch("/api/posts/feed");
         const data = await res.json();
-        if (data.error) {
-          showToast("Error", data.error, "error");
+
+        // Check for both custom error format and standard server errors like "Unauthorized"
+        if (data.error || data.message) {
+          showToast("Error", data.error || data.message, "error");
           return;
         }
         console.log(data);
@@ -35,7 +38,7 @@ const HomePage = () => {
   return (
     <Flex gap="10" alignItems={"flex-start"}>
       <Box flex={70}>
-        {!loading && posts.length === 0 && (
+        {!loading && Array.isArray(posts) && posts.length === 0 && (
           <h1>Follow some users to see the feed</h1>
         )}
 
@@ -45,9 +48,10 @@ const HomePage = () => {
           </Flex>
         )}
 
-        {posts?.map((post) => (
-          <Post key={post._id} post={post} postedBy={post.postedBy} />
-        ))}
+        {Array.isArray(posts) &&
+          posts.map((post) => (
+            <Post key={post._id} post={post} postedBy={post.postedBy} />
+          ))}
       </Box>
       <Box
         flex={30}
