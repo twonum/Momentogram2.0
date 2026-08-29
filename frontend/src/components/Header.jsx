@@ -69,17 +69,22 @@ const Header = () => {
       setIsSearching(false);
     }
   };
+
   const handleDirectMessage = (searchedUser) => {
     onClose();
+    const targetId = searchedUser?._id || searchedUser?.id;
+    if (!targetId) return;
+
     setSelectedConversation({
       _id: Date.now(),
-      userId: searchedUser._id, // Explicitly mapped to searchedUser._id
+      userId: targetId,
       username: searchedUser.username,
       userProfilePic: searchedUser.profilePic,
       mock: true,
     });
     navigate("/chat");
   };
+
   // Notifications Logic
   const [notifications, setNotifications] = useState([]);
   const unreadCount = notifications.filter((n) => !n.read).length;

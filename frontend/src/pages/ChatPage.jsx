@@ -64,10 +64,9 @@ const ChatPage = () => {
           return;
         }
 
-        // If a mock conversation was passed via atom from a profile click, handle it seamlessly
         if (selectedConversation?.mock && selectedConversation?.userId) {
           const exists = data.find(
-            (c) => c.participants[0]?._id === selectedConversation.userId,
+            (c) => c.participants?.[0]?._id === selectedConversation.userId,
           );
           if (!exists) {
             setConversations([selectedConversation, ...data]);
@@ -107,7 +106,7 @@ const ChatPage = () => {
 
       const conversationAlreadyExists = conversations.find(
         (conversation) =>
-          conversation.participants[0]?._id === searchedUser._id,
+          conversation.participants?.[0]?._id === searchedUser._id,
       );
 
       if (conversationAlreadyExists) {
@@ -151,20 +150,21 @@ const ChatPage = () => {
     <Box
       position={"relative"}
       w="full"
-      maxW="1000px"
+      maxW="1100px"
       mx="auto"
-      p={{ base: 2, md: 4 }}
+      p={{ base: 1, md: 4 }}
     >
       <Flex
-        gap={4}
+        gap={0}
         flexDirection={{ base: "column", md: "row" }}
         bg={bgCard}
-        borderRadius="xl"
+        borderRadius="2xl"
         border="1px solid"
         borderColor={borderColor}
         overflow="hidden"
-        boxShadow="lg"
-        minH="600px"
+        boxShadow="xl"
+        minH="680px"
+        maxH="80vh"
       >
         {/* Conversation Sidebar */}
         <Flex
@@ -178,24 +178,27 @@ const ChatPage = () => {
           p={4}
           borderRight="1px solid"
           borderColor={borderColor}
+          overflowY="auto"
         >
-          <Text fontWeight={700} fontSize="lg" mb={2}>
+          <Text fontWeight={700} fontSize="xl" mb={2} px={1}>
             Messages
           </Text>
           <form onSubmit={handleConversationSearch}>
-            <Flex alignItems={"center"} gap={2}>
+            <Flex alignItems={"center"} gap={2} mb={2}>
               <Input
-                placeholder="Search user..."
+                placeholder="Search direct messages..."
                 borderRadius="full"
-                size="sm"
+                size="md"
+                bg={useColorModeValue("gray.50", "whiteAlpha.50")}
                 onChange={(e) => setSearchText(e.target.value)}
               />
               <Button
-                size={"sm"}
+                size={"md"}
                 borderRadius="full"
                 colorScheme="blue"
                 type="submit"
                 isLoading={searchingUser}
+                px={5}
               >
                 <SearchIcon />
               </Button>
@@ -204,11 +207,11 @@ const ChatPage = () => {
 
           {loadingConversations &&
             [0, 1, 2, 3].map((_, i) => (
-              <Flex key={i} gap={4} alignItems={"center"} p={2}>
-                <SkeletonCircle size={"10"} />
+              <Flex key={i} gap={4} alignItems={"center"} p={3}>
+                <SkeletonCircle size={"12"} />
                 <Flex w={"full"} flexDirection={"column"} gap={2}>
-                  <Skeleton h={"10px"} w={"80px"} />
-                  <Skeleton h={"8px"} w={"90%"} />
+                  <Skeleton h={"12px"} w={"100px"} />
+                  <Skeleton h={"10px"} w={"80%"} />
                 </Flex>
               </Flex>
             ))}
@@ -219,7 +222,7 @@ const ChatPage = () => {
               <Conversation
                 key={conversation._id}
                 isOnline={onlineUsers.includes(
-                  conversation.participants?.[0]?._id, // Added safe optional chaining here
+                  conversation.participants?.[0]?._id,
                 )}
                 conversation={conversation}
               />
@@ -236,6 +239,7 @@ const ChatPage = () => {
           flexDir="column"
           justifyContent="center"
           alignItems="center"
+          bg={useColorModeValue("gray.50", "blackAlpha.200")}
         >
           {!selectedConversation?._id ? (
             <Flex
@@ -244,11 +248,14 @@ const ChatPage = () => {
               justifyContent={"center"}
               height={"100%"}
               p={6}
-              color="gray.500"
+              color="gray.400"
             >
-              <GiConversation size={80} />
-              <Text fontSize="lg" fontWeight="500" mt={4}>
-                Select a conversation to start messaging
+              <GiConversation size={90} />
+              <Text fontSize="lg" fontWeight="600" mt={4}>
+                Your Messages
+              </Text>
+              <Text fontSize="sm" textAlign="center" maxW="280px" mt={1}>
+                Send private photos and messages to a friend or group.
               </Text>
             </Flex>
           ) : (

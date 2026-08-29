@@ -217,7 +217,19 @@ const getSuggestedUsers = async (req, res) => {
 		res.status(500).json({ error: error.message });
 	}
 };
-
+// Get list of users by an array of IDs (for Followers/Following modals)
+const getUsersByIds = async (req, res) => {
+	try {
+		const { ids } = req.body;
+		if (!Array.isArray(ids)) {
+			return res.status(400).json({ error: "Invalid IDs format" });
+		}
+		const users = await User.find({ _id: { $in: ids } }).select("-password");
+		res.status(200).json(users);
+	} catch (error) {
+		res.status(500).json({ error: error.message });
+	}
+};
 const freezeAccount = async (req, res) => {
 	try {
 		const user = await User.findById(req.user._id);
@@ -299,7 +311,6 @@ const searchUser = async (req, res) => {
 		res.status(500).json({ error: error.message });
 	}
 };
-
 export {
 	signupUser,
 	loginUser,
@@ -313,5 +324,6 @@ export {
 	getAllUsers,
 	deleteAnyUser,
 	toggleAdminMods,
-	searchUser
+	searchUser,
+	getUsersByIds // Exported only once here
 };

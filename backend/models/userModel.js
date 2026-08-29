@@ -9,6 +9,10 @@ const userSchema = mongoose.Schema(
 		profilePic: { type: String, default: "" },
 		followers: { type: [String], default: [] },
 		following: { type: [String], default: [] },
+		// Add these fields inside your userSchema definition if they aren't there yet:
+		instagramLink: { type: String, default: "" },
+		linkedinLink: { type: String, default: "" },
+		websiteUrl: { type: String, default: "" },
 		bio: { type: String, default: "" },
 		isFrozen: { type: Boolean, default: false },
 		role: { type: String, enum: ["user", "admin", "superadmin"], default: "user" },

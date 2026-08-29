@@ -10,7 +10,8 @@ import {
 	freezeAccount,
 	getAllUsers,
 	deleteAnyUser,
-	searchUser // The missing import causing the crash
+	searchUser,
+	getUsersByIds
 } from "../controllers/userController.js";
 import protectRoute from "../middlewares/protectRoute.js";
 import requireAdmin from "../middlewares/requireAdmin.js";
@@ -20,6 +21,7 @@ const router = express.Router();
 router.get("/profile/:query", getUserProfile);
 router.get("/search/:query", protectRoute, searchUser);
 router.get("/suggested", protectRoute, getSuggestedUsers);
+router.post("/list", protectRoute, getUsersByIds); // Added route for Followers/Following modals
 router.post("/signup", signupUser);
 router.post("/login", loginUser);
 router.post("/logout", logoutUser);
