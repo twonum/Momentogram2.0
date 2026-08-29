@@ -113,10 +113,22 @@ const MessageContainer = () => {
 
   useEffect(() => {
     const getMessages = async () => {
+      // Guard clause: Do not fetch if userId is missing or undefined
+      if (
+        !selectedConversation?.userId ||
+        selectedConversation.userId === "undefined"
+      ) {
+        setLoadingMessages(false);
+        return;
+      }
+
       setLoadingMessages(true);
       setMessages([]);
       try {
-        if (selectedConversation.mock) return;
+        if (selectedConversation.mock) {
+          setLoadingMessages(false);
+          return;
+        }
         const res = await fetch(`/api/messages/${selectedConversation.userId}`);
         const data = await res.json();
         if (data.error) {
@@ -132,7 +144,7 @@ const MessageContainer = () => {
     };
 
     getMessages();
-  }, [selectedConversation.userId, selectedConversation.mock, showToast]);
+  }, [selectedConversation?.userId, selectedConversation?.mock, showToast]);
 
   const handleSendMessage = async (e) => {
     e.preventDefault();

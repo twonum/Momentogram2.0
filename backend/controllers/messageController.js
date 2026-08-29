@@ -57,16 +57,22 @@ async function sendMessage(req, res) {
 	}
 }
 
-async function getMessages(req, res) {
+const getMessages = async (req, res) => {
 	const { otherUserId } = req.params;
 	const userId = req.user._id;
+
+	// Prevent crashing if undefined is passed in the URL route
+	if (!otherUserId || otherUserId === "undefined") {
+		return res.status(400).json({ error: "Invalid recipient user ID" });
+	}
+
 	try {
 		const conversation = await Conversation.findOne({
 			participants: { $all: [userId, otherUserId] },
 		});
 
 		if (!conversation) {
-			return res.status(404).json({ error: "Conversation not found" });
+			return res.status(200).json([]); // Return empty array instead of failing
 		}
 
 		const messages = await Message.find({
@@ -77,7 +83,7 @@ async function getMessages(req, res) {
 	} catch (error) {
 		res.status(500).json({ error: error.message });
 	}
-}
+};
 
 async function getConversations(req, res) {
 	const userId = req.user._id;
