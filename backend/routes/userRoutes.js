@@ -11,7 +11,8 @@ import {
 	getAllUsers,
 	deleteAnyUser,
 	searchUser,
-	getUsersByIds
+	getUsersByIds,
+	toggleAdminMods
 } from "../controllers/userController.js";
 import protectRoute from "../middlewares/protectRoute.js";
 import requireAdmin from "../middlewares/requireAdmin.js";
@@ -32,5 +33,7 @@ router.put("/freeze", protectRoute, freezeAccount);
 // Admin Routes
 router.get("/admin/users", protectRoute, requireAdmin, getAllUsers);
 router.delete("/admin/delete/:id", protectRoute, requireAdmin, deleteAnyUser);
+// Add this line under your Admin Routes section:
+router.put("/admin/toggle-mods", protectRoute, requireAdmin, toggleAdminMods);
 
 export default router;

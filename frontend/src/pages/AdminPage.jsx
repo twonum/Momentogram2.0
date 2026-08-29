@@ -25,6 +25,7 @@ const AdminPage = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [toggling, setToggling] = useState(false);
+  const [modsAllowed, setModsAllowed] = useState(false);
   const showToast = useShowToast();
   const currentUser = useRecoilValue(userAtom);
 
@@ -32,7 +33,7 @@ const AdminPage = () => {
   const textColor = useColorModeValue("black", "white");
 
   useEffect(() => {
-    const fetchUsers = async () => {
+    const fetchAdminData = async () => {
       try {
         const res = await fetch("/api/users/admin/users");
         const data = await res.json();
@@ -47,7 +48,7 @@ const AdminPage = () => {
         setLoading(false);
       }
     };
-    fetchUsers();
+    fetchAdminData();
   }, [showToast]);
 
   const handleDeleteUser = async (userId) => {
@@ -81,6 +82,7 @@ const AdminPage = () => {
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
+      setModsAllowed(data.status);
       showToast(
         "Success",
         `Admin modifications are now ${data.status ? "ENABLED" : "DISABLED"}`,
@@ -196,6 +198,7 @@ const AdminPage = () => {
                     id="mod-alerts"
                     size="lg"
                     colorScheme="blue"
+                    isChecked={modsAllowed}
                     onChange={handleToggleMods}
                     isDisabled={toggling}
                   />

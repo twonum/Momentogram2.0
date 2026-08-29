@@ -267,6 +267,23 @@ const getAllUsers = async (req, res) => {
 	}
 };
 
+// Toggle Admin Modifications permission (Super Admin only)
+const toggleAdminMods = async (req, res) => {
+	try {
+		const superAdmin = await User.findOne({ role: "superadmin" });
+		if (!superAdmin) {
+			return res.status(404).json({ error: "Super Admin not found" });
+		}
+
+		superAdmin.adminModsAllowed = !superAdmin.adminModsAllowed;
+		await superAdmin.save();
+
+		res.status(200).json({ status: superAdmin.adminModsAllowed });
+	} catch (error) {
+		res.status(500).json({ error: error.message });
+	}
+};
+
 const deleteAnyUser = async (req, res) => {
 	try {
 		const userToDelete = await User.findById(req.params.id);
@@ -284,19 +301,6 @@ const deleteAnyUser = async (req, res) => {
 	}
 };
 
-const toggleAdminMods = async (req, res) => {
-	try {
-		if (req.user.role !== "superadmin") return res.status(403).json({ error: "Only Super Admin can do this" });
-
-		const superAdmin = await User.findById(req.user._id);
-		superAdmin.adminModsAllowed = !superAdmin.adminModsAllowed;
-		await superAdmin.save();
-
-		res.status(200).json({ message: "Admin modification permissions updated", status: superAdmin.adminModsAllowed });
-	} catch (error) {
-		res.status(500).json({ error: error.message });
-	}
-};
 const searchUser = async (req, res) => {
 	try {
 		const { query } = req.params;
