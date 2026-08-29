@@ -59,8 +59,10 @@ const ChatPage = () => {
       try {
         const res = await fetch("/api/messages/conversations");
         const data = await res.json();
-        if (data.error) {
-          showToast("Error", data.error, "error");
+
+        // Catch unauthorized/server errors before setting state
+        if (data.error || data.message) {
+          showToast("Error", data.error || data.message, "error");
           return;
         }
         console.log(data);
@@ -81,8 +83,10 @@ const ChatPage = () => {
     try {
       const res = await fetch(`/api/users/profile/${searchText}`);
       const searchedUser = await res.json();
-      if (searchedUser.error) {
-        showToast("Error", searchedUser.error, "error");
+
+      // Catch unauthorized/server errors before searching
+      if (searchedUser.error || searchedUser.message) {
+        showToast("Error", searchedUser.error || searchedUser.message, "error");
         return;
       }
 
@@ -194,8 +198,10 @@ const ChatPage = () => {
               </Flex>
             ))}
 
+          {/* Secure the map function with Array.isArray */}
           {!loadingConversations &&
-            conversations?.map((conversation) => (
+            Array.isArray(conversations) &&
+            conversations.map((conversation) => (
               <Conversation
                 key={conversation._id}
                 isOnline={onlineUsers.includes(
