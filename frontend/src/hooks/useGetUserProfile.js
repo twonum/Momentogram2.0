@@ -10,11 +10,15 @@ const useGetUserProfile = () => {
 
 	useEffect(() => {
 		const getUser = async () => {
+			setLoading(true);
 			try {
 				const res = await fetch(`/api/users/profile/${username}`);
 				const data = await res.json();
-				if (data.error) {
-					showToast("Error", data.error, "error");
+
+				// Catch both custom and standard server errors
+				if (data.error || data.message) {
+					showToast("Error", data.error || data.message, "error");
+					setUser(null);
 					return;
 				}
 				if (data.isFrozen) {
@@ -24,6 +28,7 @@ const useGetUserProfile = () => {
 				setUser(data);
 			} catch (error) {
 				showToast("Error", error.message, "error");
+				setUser(null);
 			} finally {
 				setLoading(false);
 			}
