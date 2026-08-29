@@ -329,23 +329,38 @@ const Header = () => {
         </Link>
       )}
 
-      <Modal isOpen={isOpen} onClose={onClose} size="lg">
-        <ModalOverlay />
-        <ModalContent>
-          <ModalHeader>Search Users</ModalHeader>
-          <ModalCloseButton />
+      {/* POLISHED SEARCH MODAL */}
+      <Modal isOpen={isOpen} onClose={onClose} size="md" isCentered>
+        <ModalOverlay backdropFilter="blur(3px)" />
+        <ModalContent
+          borderRadius="2xl"
+          p={2}
+          bg={useColorModeValue("white", "gray.800")}
+          boxShadow="2xl"
+        >
+          <ModalHeader fontSize="lg" fontWeight="bold">
+            Search Users
+          </ModalHeader>
+          <ModalCloseButton mt={3} mr={3} borderRadius="full" />
           <ModalBody pb={6}>
             <form onSubmit={handleSearch}>
-              <Flex gap={2}>
+              <Flex gap={3}>
                 <Input
                   placeholder="Search by name or username..."
                   value={searchText}
                   onChange={(e) => setSearchText(e.target.value)}
+                  borderRadius="full"
+                  bg={useColorModeValue("gray.50", "whiteAlpha.100")}
+                  border="none"
+                  _focus={{ ring: 2, ringColor: "blue.400" }}
+                  py={5}
                 />
                 <Button
                   type="submit"
                   isLoading={isSearching}
                   colorScheme="blue"
+                  borderRadius="full"
+                  px={6}
                 >
                   Search
                 </Button>
@@ -360,9 +375,9 @@ const Header = () => {
                       key={u._id || Math.random()}
                       justifyContent="space-between"
                       alignItems="center"
-                      p={2}
+                      p={3}
                       _hover={{ bg: hoverBg }}
-                      borderRadius="md"
+                      borderRadius="xl"
                       transition="all 0.2s"
                     >
                       <Flex
@@ -377,12 +392,13 @@ const Header = () => {
                         <Avatar
                           src={u.profilePic}
                           name={u.name || u.username}
+                          size="sm"
                         />
                         <Box>
-                          <Text fontWeight="bold">
+                          <Text fontWeight="bold" fontSize="sm">
                             {u.username || "Unknown"}
                           </Text>
-                          <Text fontSize="sm" color="gray.500">
+                          <Text fontSize="xs" color="gray.500">
                             {u.name}
                           </Text>
                         </Box>
@@ -392,10 +408,10 @@ const Header = () => {
                           size="sm"
                           borderRadius="full"
                           colorScheme="blue"
-                          variant="outline"
+                          variant="ghost"
                           onClick={() => handleDirectMessage(u)}
                         >
-                          Chat
+                          Message
                         </Button>
                       )}
                     </Flex>

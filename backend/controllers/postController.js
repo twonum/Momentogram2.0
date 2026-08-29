@@ -2,7 +2,7 @@ import Post from "../models/postModel.js";
 import User from "../models/userModel.js";
 import { v2 as cloudinary } from "cloudinary";
 
-const createPost = async (req, res) => {
+export const createPost = async (req, res) => {
 	try {
 		const { postedBy, text } = req.body;
 		let { img } = req.body;
@@ -12,9 +12,7 @@ const createPost = async (req, res) => {
 		}
 
 		const user = await User.findById(postedBy);
-		if (!user) {
-			return res.status(404).json({ error: "User not found" });
-		}
+		if (!user) return res.status(404).json({ error: "User not found" });
 
 		if (user._id.toString() !== req.user._id.toString()) {
 			return res.status(401).json({ error: "Unauthorized to create post" });
@@ -36,17 +34,13 @@ const createPost = async (req, res) => {
 		res.status(201).json(newPost);
 	} catch (err) {
 		res.status(500).json({ error: err.message });
-		console.log(err);
 	}
 };
 
-const getPost = async (req, res) => {
+export const getPost = async (req, res) => {
 	try {
-		const post = await Post.findById(req.params.id);
-
-		if (!post) {
-			return res.status(404).json({ error: "Post not found" });
-		}
+		const post = await Post.findById(req.params.id).populate("repostedBy", "username profilePic");
+		if (!post) return res.status(404).json({ error: "Post not found" });
 
 		res.status(200).json(post);
 	} catch (err) {
@@ -54,49 +48,46 @@ const getPost = async (req, res) => {
 	}
 };
 
-const deletePost = async (req, res) => {
+export const deletePost = async (req, res) => {
 	try {
 		const post = await Post.findById(req.params.id);
-		if (!post) {
-			return res.status(404).json({ error: "Post not found" });
-		}
+		if (!post) return res.status(404).json({ error: "Post not found" });
 
-		if (post.postedBy.toString() !== req.user._id.toString()) {
+		// Allow deletion if the user is the original author OR if they are the reposter
+		const isOriginalAuthor = post.postedBy.toString() === req.user._id.toString();
+		const isReposter = post.repostedBy && post.repostedBy.toString() === req.user._id.toString();
+
+		if (!isOriginalAuthor && !isReposter) {
 			return res.status(401).json({ error: "Unauthorized to delete post" });
 		}
 
-		if (post.img) {
+		// Only delete image from Cloudinary if it's the original post being deleted, not a repost
+		if (post.img && !post.repostedBy) {
 			const imgId = post.img.split("/").pop().split(".")[0];
-			await cloudinary.uploader.destroy(imgId);
+			await cloudinary.uploader.destroy(imgId).catch(console.error);
 		}
 
 		await Post.findByIdAndDelete(req.params.id);
-
 		res.status(200).json({ message: "Post deleted successfully" });
 	} catch (err) {
 		res.status(500).json({ error: err.message });
 	}
 };
 
-const likeUnlikePost = async (req, res) => {
+export const likeUnlikePost = async (req, res) => {
 	try {
 		const { id: postId } = req.params;
 		const userId = req.user._id;
 
 		const post = await Post.findById(postId);
-
-		if (!post) {
-			return res.status(404).json({ error: "Post not found" });
-		}
+		if (!post) return res.status(404).json({ error: "Post not found" });
 
 		const userLikedPost = post.likes.includes(userId);
 
 		if (userLikedPost) {
-			// Unlike post
 			await Post.updateOne({ _id: postId }, { $pull: { likes: userId } });
 			res.status(200).json({ message: "Post unliked successfully" });
 		} else {
-			// Like post
 			post.likes.push(userId);
 			await post.save();
 			res.status(200).json({ message: "Post liked successfully" });
@@ -106,7 +97,7 @@ const likeUnlikePost = async (req, res) => {
 	}
 };
 
-const replyToPost = async (req, res) => {
+export const replyToPost = async (req, res) => {
 	try {
 		const { text } = req.body;
 		const postId = req.params.id;
@@ -114,17 +105,12 @@ const replyToPost = async (req, res) => {
 		const userProfilePic = req.user.profilePic;
 		const username = req.user.username;
 
-		if (!text) {
-			return res.status(400).json({ error: "Text field is required" });
-		}
+		if (!text) return res.status(400).json({ error: "Text field is required" });
 
 		const post = await Post.findById(postId);
-		if (!post) {
-			return res.status(404).json({ error: "Post not found" });
-		}
+		if (!post) return res.status(404).json({ error: "Post not found" });
 
 		const reply = { userId, text, userProfilePic, username };
-
 		post.replies.push(reply);
 		await post.save();
 
@@ -143,35 +129,46 @@ export const repostPost = async (req, res) => {
 		if (!originalPost) return res.status(404).json({ error: "Post not found" });
 
 		const newPost = new Post({
-			postedBy: userId,
+			postedBy: originalPost.postedBy, // Keep original author
 			text: originalPost.text,
 			img: originalPost.img,
 			repostedFrom: originalPost._id,
+			repostedBy: userId, // Track the reposter
 		});
 
 		await newPost.save();
+		await newPost.populate("repostedBy", "username profilePic");
+
 		res.status(201).json(newPost);
 	} catch (error) {
 		res.status(500).json({ error: error.message });
 	}
 };
 
-const getFeedPosts = async (req, res) => {
+export const getFeedPosts = async (req, res) => {
 	try {
 		const userId = req.user._id;
 		const user = await User.findById(userId);
-		if (!user) {
-			return res.status(404).json({ error: "User not found" });
-		}
+		if (!user) return res.status(404).json({ error: "User not found" });
 
 		const following = user.following;
 
-		// Feed includes posts from followed users AND recent global posts so admins/new users never see an empty feed
-		const feedPosts = await Post.find({ $or: [{ postedBy: { $in: following } }, { postedBy: userId }] }).sort({ createdAt: -1 });
+		const feedPosts = await Post.find({
+			$or: [
+				{ postedBy: { $in: following } },
+				{ postedBy: userId },
+				{ repostedBy: { $in: following } },
+				{ repostedBy: userId }
+			]
+		})
+			.sort({ createdAt: -1 })
+			.populate("repostedBy", "username profilePic");
 
 		if (feedPosts.length === 0) {
-			// Fallback to recent posts across platform if following list is empty
-			const generalPosts = await Post.find({}).sort({ createdAt: -1 }).limit(20);
+			const generalPosts = await Post.find({})
+				.sort({ createdAt: -1 })
+				.limit(20)
+				.populate("repostedBy", "username profilePic");
 			return res.status(200).json(generalPosts);
 		}
 
@@ -181,21 +178,21 @@ const getFeedPosts = async (req, res) => {
 	}
 };
 
-const getUserPosts = async (req, res) => {
+export const getUserPosts = async (req, res) => {
 	const { username } = req.params;
 	try {
 		const user = await User.findOne({ username });
-		if (!user) {
-			return res.status(404).json({ error: "User not found" });
-		}
+		if (!user) return res.status(404).json({ error: "User not found" });
 
-		// Fetch posts created by user OR posts where user has left a reply
 		const posts = await Post.find({
 			$or: [
 				{ postedBy: user._id },
+				{ repostedBy: user._id },
 				{ "replies.userId": user._id }
 			]
-		}).sort({ createdAt: -1 });
+		})
+			.sort({ createdAt: -1 })
+			.populate("repostedBy", "username profilePic");
 
 		res.status(200).json(posts);
 	} catch (error) {
@@ -203,12 +200,10 @@ const getUserPosts = async (req, res) => {
 	}
 };
 
-const deleteAnyPost = async (req, res) => {
+export const deleteAnyPost = async (req, res) => {
 	try {
 		const post = await Post.findById(req.params.id);
-		if (!post) {
-			return res.status(404).json({ error: "Post not found" });
-		}
+		if (!post) return res.status(404).json({ error: "Post not found" });
 
 		await Post.findByIdAndDelete(req.params.id);
 		res.status(200).json({ message: "Post forcefully deleted by Admin" });
@@ -216,5 +211,3 @@ const deleteAnyPost = async (req, res) => {
 		res.status(500).json({ error: error.message });
 	}
 };
-
-export { createPost, getPost, deletePost, likeUnlikePost, replyToPost, getFeedPosts, getUserPosts, deleteAnyPost };

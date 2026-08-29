@@ -38,10 +38,15 @@ const postSchema = mongoose.Schema(
 				},
 			},
 		],
-		// This is CRITICAL for the Reposts tab to work
 		repostedFrom: {
 			type: mongoose.Schema.Types.ObjectId,
 			ref: "Post",
+			default: null,
+		},
+		// Tracks the user who actually clicked Repost
+		repostedBy: {
+			type: mongoose.Schema.Types.ObjectId,
+			ref: "User",
 			default: null,
 		},
 	},

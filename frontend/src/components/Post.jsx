@@ -1,6 +1,6 @@
 import { Avatar } from "@chakra-ui/avatar";
 import { Image } from "@chakra-ui/image";
-import { Box, Flex, Text, Badge } from "@chakra-ui/layout";
+import { Box, Flex, Text } from "@chakra-ui/layout";
 import { Link, useNavigate } from "react-router-dom";
 import Actions from "./Actions";
 import { useEffect, useState } from "react";
@@ -10,6 +10,7 @@ import { DeleteIcon } from "@chakra-ui/icons";
 import { useRecoilState, useRecoilValue } from "recoil";
 import userAtom from "../atoms/userAtom";
 import postsAtom from "../atoms/postsAtom";
+import { FiRepeat } from "react-icons/fi";
 
 const Post = ({ post, postedBy }) => {
   const [user, setUser] = useState(null);
@@ -23,10 +24,7 @@ const Post = ({ post, postedBy }) => {
       try {
         const res = await fetch("/api/users/profile/" + postedBy);
         const data = await res.json();
-        if (data.error) {
-          showToast("Error", data.error, "error");
-          return;
-        }
+        if (data.error) return showToast("Error", data.error, "error");
         setUser(data);
       } catch (error) {
         showToast("Error", error.message, "error");
@@ -54,30 +52,39 @@ const Post = ({ post, postedBy }) => {
 
   if (!user) return null;
 
+  // Reposter or Original author can delete
+  const canDelete =
+    currentUser?._id === user._id || currentUser?._id === post.repostedBy?._id;
+
   return (
     <Box mb={4} py={2}>
-      {/* Clear Reposted Badge */}
-      {post.repostedFrom && (
+      {/* BEAUTIFUL REPOST INDICATOR */}
+      {post.repostedBy && (
         <Flex
           gap={2}
           alignItems="center"
-          mb={2}
+          mb={3}
           color="gray.500"
           fontSize="sm"
           ml={2}
         >
-          <svg
-            aria-label="Repost"
-            color="currentColor"
-            fill="currentColor"
-            height="16"
-            role="img"
-            viewBox="0 0 24 24"
-            width="16"
+          <FiRepeat size={14} />
+          <Avatar
+            size="2xs"
+            src={post.repostedBy.profilePic}
+            name={post.repostedBy.username}
+          />
+          <Text
+            fontWeight="bold"
+            cursor="pointer"
+            _hover={{ textDecoration: "underline" }}
+            onClick={(e) => {
+              e.preventDefault();
+              navigate(`/${post.repostedBy.username}`);
+            }}
           >
-            <path d="M19.998 9.497a1 1 0 0 0-1 1v4.228a3.274 3.274 0 0 1-3.27 3.27h-5.313l1.791-1.787a1 1 0 0 0-1.412-1.416L7.29 18.287a1.004 1.004 0 0 0-.294.707v.001c0 .023.012.042.013.065a.923.923 0 0 0 .281.643l3.502 3.504a1 1 0 0 0 1.414-1.414l-1.797-1.798h5.318a5.276 5.276 0 0 0 5.27-5.27v-4.228a1 1 0 0 0-1-1Zm-6.41-3.496-1.795 1.795a1 1 0 1 0 1.414 1.414l3.5-3.5a1.003 1.003 0 0 0 0-1.417l-3.5-3.5a1 1 0 0 0-1.414 1.414l1.794 1.794H8.27A5.277 5.277 0 0 0 3 9.271V13.5a1 1 0 0 0 2 0V9.271a3.273 3.273 0 0 1 3.271-3.27Z"></path>
-          </svg>
-          <Text fontWeight="bold">{user.username} reposted</Text>
+            {post.repostedBy.username} reposted
+          </Text>
         </Flex>
       )}
 
@@ -95,6 +102,9 @@ const Post = ({ post, postedBy }) => {
             />
             <Box w="1px" h={"full"} bg="gray.light" my={2}></Box>
             <Box position={"relative"} w={"full"}>
+              {post.replies.length === 0 && (
+                <Text textAlign={"center"}>🥱</Text>
+              )}
               {post.replies[0] && (
                 <Avatar
                   size="xs"
@@ -155,8 +165,12 @@ const Post = ({ post, postedBy }) => {
                 >
                   {formatDistanceToNow(new Date(post.createdAt))} ago
                 </Text>
-                {currentUser?._id === user._id && (
-                  <DeleteIcon size={20} onClick={handleDeletePost} />
+                {canDelete && (
+                  <DeleteIcon
+                    size={16}
+                    onClick={handleDeletePost}
+                    _hover={{ color: "red.500" }}
+                  />
                 )}
               </Flex>
             </Flex>
@@ -170,7 +184,19 @@ const Post = ({ post, postedBy }) => {
                 border={"1px solid"}
                 borderColor={"gray.light"}
               >
-                <Image src={post.img} w={"full"} />
+                {post.img.match(/\.(mp4|webm|ogg|mov)$/i) ? (
+                  <video
+                    src={post.img}
+                    controls
+                    style={{
+                      width: "100%",
+                      maxHeight: "400px",
+                      objectFit: "cover",
+                    }}
+                  />
+                ) : (
+                  <Image src={post.img} w={"full"} />
+                )}
               </Box>
             )}
 

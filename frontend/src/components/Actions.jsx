@@ -13,6 +13,7 @@ import {
   ModalOverlay,
   Text,
   useDisclosure,
+  useColorModeValue,
 } from "@chakra-ui/react";
 import { useState } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
@@ -31,6 +32,7 @@ const Actions = ({ post }) => {
 
   const showToast = useShowToast();
   const { isOpen, onOpen, onClose } = useDisclosure();
+  const inputBg = useColorModeValue("gray.50", "whiteAlpha.100");
 
   const handleLikeAndUnlike = async (e) => {
     e.preventDefault();
@@ -135,9 +137,7 @@ const Actions = ({ post }) => {
           title: "Check out this post on Momentogram",
           url: shareUrl,
         });
-      } catch (err) {
-        console.error("Error sharing", err);
-      }
+      } catch (err) {}
     } else {
       navigator.clipboard.writeText(shareUrl);
       showToast("Success", "Post link copied to clipboard!", "success");
@@ -186,7 +186,6 @@ const Actions = ({ post }) => {
           ></path>
         </svg>
 
-        {/* Clean Threads-style Repost Icon */}
         <svg
           aria-label="Repost"
           color="currentColor"
@@ -238,31 +237,44 @@ const Actions = ({ post }) => {
         <Text>{post.likes?.length} likes</Text>
       </Flex>
 
-      <Modal isOpen={isOpen} onClose={onClose}>
-        <ModalOverlay />
-        <ModalContent>
-          <ModalHeader>
+      {/* POLISHED REPLY MODAL */}
+      <Modal isOpen={isOpen} onClose={onClose} isCentered>
+        <ModalOverlay backdropFilter="blur(3px)" />
+        <ModalContent
+          borderRadius="2xl"
+          p={2}
+          bg={useColorModeValue("white", "gray.800")}
+          boxShadow="2xl"
+        >
+          <ModalHeader fontSize="md" fontWeight="bold" pb={2}>
             Reply to {post?.postedBy?.username || "Post"}
           </ModalHeader>
-          <ModalCloseButton />
+          <ModalCloseButton mt={3} mr={3} borderRadius="full" />
           <ModalBody pb={6}>
             <FormControl>
               <Input
-                placeholder="Reply goes here..."
+                placeholder="Write a cute reply..."
                 value={reply}
                 onChange={(e) => setReply(e.target.value)}
+                borderRadius="xl"
+                bg={inputBg}
+                border="none"
+                _focus={{ ring: 2, ringColor: "blue.400" }}
+                py={5}
               />
             </FormControl>
           </ModalBody>
-          <ModalFooter>
+          <ModalFooter pt={0}>
             <Button
               colorScheme="blue"
-              size={"sm"}
-              mr={3}
+              borderRadius="full"
+              size="sm"
+              px={6}
               isLoading={isReplying}
               onClick={handleReply}
+              w="full"
             >
-              Reply
+              Post Reply
             </Button>
           </ModalFooter>
         </ModalContent>
