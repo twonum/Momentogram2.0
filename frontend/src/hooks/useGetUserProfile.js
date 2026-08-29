@@ -1,40 +1,41 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
-import useShowToast from "./useShowToast";
+import { useParams, useNavigate } from "react-router-dom";
 
 const useGetUserProfile = () => {
 	const [user, setUser] = useState(null);
 	const [loading, setLoading] = useState(true);
 	const { username } = useParams();
-	const showToast = useShowToast();
+	const navigate = useNavigate();
+
+	// Prevent fetching if the route is clearly not a user (like /404, /chat, /admin, etc.)
+	const reservedRoutes = ["404", "chat", "admin", "auth", "settings"];
 
 	useEffect(() => {
-		const getUser = async () => {
-			setLoading(true);
-			try {
-				const res = await fetch(`/api/users/profile/${username}`);
-				const data = await res.json();
+		if (reservedRoutes.includes(username)) {
+			navigate("/404", { replace: true });
+			return;
+		}
 
-				// Catch both custom and standard server errors
-				if (data.error || data.message) {
-					showToast("Error", data.error || data.message, "error");
-					setUser(null);
+		const getUser = async () => {
+			try {
+				const res = `/api/users/profile/${username}`;
+				const response = await fetch(res);
+				const data = await response.json();
+
+				if (data.error || response.status === 404) {
+					navigate("/404", { replace: true });
 					return;
 				}
-				if (data.isFrozen) {
-					setUser(null);
-					return;
-				}
+
 				setUser(data);
 			} catch (error) {
-				showToast("Error", error.message, "error");
-				setUser(null);
+				navigate("/404", { replace: true });
 			} finally {
 				setLoading(false);
 			}
 		};
 		getUser();
-	}, [username, showToast]);
+	}, [username, navigate]);
 
 	return { loading, user };
 };

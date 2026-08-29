@@ -33,6 +33,7 @@ function App() {
             path="/auth"
             element={!user ? <AuthPage /> : <Navigate to="/" />}
           />
+          <Route path="/404" element={<NotFoundPage />} />
           <Route
             path="/update"
             element={user ? <UpdateProfilePage /> : <Navigate to="/auth" />}
