@@ -129,7 +129,16 @@ const MessageContainer = () => {
       {/* Message header */}
       <Flex w={"full"} h={12} alignItems={"center"} gap={2}>
         <Avatar src={selectedConversation.userProfilePic} size={"sm"} />
-        <Text display={"flex"} alignItems={"center"}>
+        <Text
+          display={"flex"}
+          alignItems={"center"}
+          fontWeight={"bold"}
+          cursor={"pointer"}
+          _hover={{ textDecoration: "underline" }}
+          onClick={() =>
+            window.open(`/${selectedConversation.username}`, "_blank")
+          }
+        >
           {selectedConversation.username}{" "}
           <Image src="/verified.png" w={4} h={4} ml={1} />
         </Text>

@@ -55,12 +55,19 @@ const ChatPage = () => {
   }, [socket, setConversations]);
 
   useEffect(() => {
+    // FIX: Clear the selection immediately on mount so the user list shows by default
+    setSelectedConversation({
+      _id: "",
+      userId: "",
+      username: "",
+      userProfilePic: "",
+    });
+
     const getConversations = async () => {
       try {
         const res = await fetch("/api/messages/conversations");
         const data = await res.json();
 
-        // Catch unauthorized/server errors before setting state
         if (data.error || data.message) {
           showToast("Error", data.error || data.message, "error");
           return;
@@ -75,7 +82,7 @@ const ChatPage = () => {
     };
 
     getConversations();
-  }, [showToast, setConversations]);
+  }, [showToast, setConversations, setSelectedConversation]);
 
   const handleConversationSearch = async (e) => {
     e.preventDefault();
@@ -84,7 +91,6 @@ const ChatPage = () => {
       const res = await fetch(`/api/users/profile/${searchText}`);
       const searchedUser = await res.json();
 
-      // Catch unauthorized/server errors before searching
       if (searchedUser.error || searchedUser.message) {
         showToast("Error", searchedUser.error || searchedUser.message, "error");
         return;
@@ -198,7 +204,6 @@ const ChatPage = () => {
               </Flex>
             ))}
 
-          {/* Secure the map function with Array.isArray */}
           {!loadingConversations &&
             Array.isArray(conversations) &&
             conversations.map((conversation) => (

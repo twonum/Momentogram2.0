@@ -5,12 +5,12 @@ import {
 	loginUser,
 	logoutUser,
 	signupUser,
-	toggleAdminMods,
 	updateUser,
 	getSuggestedUsers,
 	freezeAccount,
 	getAllUsers,
-	deleteAnyUser
+	deleteAnyUser,
+	searchUser // The missing import causing the crash
 } from "../controllers/userController.js";
 import protectRoute from "../middlewares/protectRoute.js";
 import requireAdmin from "../middlewares/requireAdmin.js";
@@ -18,6 +18,7 @@ import requireAdmin from "../middlewares/requireAdmin.js";
 const router = express.Router();
 
 router.get("/profile/:query", getUserProfile);
+router.get("/search/:query", protectRoute, searchUser);
 router.get("/suggested", protectRoute, getSuggestedUsers);
 router.post("/signup", signupUser);
 router.post("/login", loginUser);
@@ -29,6 +30,5 @@ router.put("/freeze", protectRoute, freezeAccount);
 // Admin Routes
 router.get("/admin/users", protectRoute, requireAdmin, getAllUsers);
 router.delete("/admin/delete/:id", protectRoute, requireAdmin, deleteAnyUser);
-router.put("/admin/toggle-mods", protectRoute, requireAdmin, toggleAdminMods);
 
 export default router;

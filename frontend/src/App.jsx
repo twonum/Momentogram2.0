@@ -11,9 +11,12 @@ import UpdateProfilePage from "./pages/UpdateProfilePage";
 import CreatePost from "./components/CreatePost";
 import ChatPage from "./pages/ChatPage";
 import { SettingsPage } from "./pages/SettingsPage";
+import AdminPage from "./pages/AdminPage";
+
 function App() {
   const user = useRecoilValue(userAtom);
   const { pathname } = useLocation();
+
   return (
     <Box position={"relative"} w="full">
       <Container
@@ -32,10 +35,6 @@ function App() {
           <Route
             path="/update"
             element={user ? <UpdateProfilePage /> : <Navigate to="/auth" />}
-          />
-          <Route
-            path="/admin"
-            element={user?.isAdmin ? <AdminPage /> : <Navigate to="/" />}
           />
           <Route
             path="/:username"
@@ -58,6 +57,18 @@ function App() {
           <Route
             path="/settings"
             element={user ? <SettingsPage /> : <Navigate to={"/auth"} />}
+          />
+
+          {/* FIXED: Route now checks for the new role schema instead of the old boolean */}
+          <Route
+            path="/admin"
+            element={
+              user && (user.role === "admin" || user.role === "superadmin") ? (
+                <AdminPage />
+              ) : (
+                <Navigate to="/" />
+              )
+            }
           />
         </Routes>
       </Container>

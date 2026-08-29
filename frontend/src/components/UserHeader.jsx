@@ -13,8 +13,8 @@ import {
   MenuItem,
   MenuList,
   Portal,
+  useColorModeValue,
 } from "@chakra-ui/react";
-import { BsInstagram } from "react-icons/bs";
 import { CgMoreO } from "react-icons/cg";
 import { useRecoilValue } from "recoil";
 import userAtom from "../atoms/userAtom";
@@ -23,8 +23,11 @@ import useFollowUnfollow from "../hooks/useFollowUnfollow";
 
 const UserHeader = ({ user }) => {
   const toast = useToast();
-  const currentUser = useRecoilValue(userAtom); // logged in user
+  const currentUser = useRecoilValue(userAtom);
   const { handleFollowUnfollow, following, updating } = useFollowUnfollow(user);
+
+  const menuBg = useColorModeValue("white", "gray.dark");
+  const textColor = useColorModeValue("black", "white");
 
   const copyURL = () => {
     const currentURL = window.location.href;
@@ -58,7 +61,6 @@ const UserHeader = ({ user }) => {
               threads.net
             </Text>
 
-            {/* Admin Badges */}
             {user.role === "superadmin" && (
               <Badge colorScheme="red" p={1} borderRadius="md">
                 Super Admin
@@ -69,28 +71,19 @@ const UserHeader = ({ user }) => {
                 Admin
               </Badge>
             )}
+            {user.role === "user" && (
+              <Badge colorScheme="gray" p={1} borderRadius="md">
+                Standard User
+              </Badge>
+            )}
           </Flex>
         </Box>
         <Box>
-          {user.profilePic ? (
-            <Avatar
-              name={user.name}
-              src={user.profilePic}
-              size={{
-                base: "md",
-                md: "xl",
-              }}
-            />
-          ) : (
-            <Avatar
-              name={user.name}
-              src="https://bit.ly/broken-link"
-              size={{
-                base: "md",
-                md: "xl",
-              }}
-            />
-          )}
+          <Avatar
+            name={user.name}
+            src={user.profilePic || "https://bit.ly/broken-link"}
+            size={{ base: "md", md: "xl" }}
+          />
         </Box>
       </Flex>
 
@@ -114,44 +107,19 @@ const UserHeader = ({ user }) => {
         </Flex>
         <Flex>
           <Box className="icon-container">
-            <BsInstagram size={24} cursor={"pointer"} />
-          </Box>
-          <Box className="icon-container">
             <Menu>
               <MenuButton>
                 <CgMoreO size={24} cursor={"pointer"} />
               </MenuButton>
               <Portal>
-                <MenuList bg={"gray.dark"}>
-                  <MenuItem bg={"gray.dark"} onClick={copyURL}>
+                <MenuList bg={menuBg} color={textColor}>
+                  <MenuItem bg={menuBg} onClick={copyURL}>
                     Copy link
                   </MenuItem>
                 </MenuList>
               </Portal>
             </Menu>
           </Box>
-        </Flex>
-      </Flex>
-
-      <Flex w={"full"}>
-        <Flex
-          flex={1}
-          borderBottom={"1.5px solid white"}
-          justifyContent={"center"}
-          pb="3"
-          cursor={"pointer"}
-        >
-          <Text fontWeight={"bold"}> Threads</Text>
-        </Flex>
-        <Flex
-          flex={1}
-          borderBottom={"1px solid gray"}
-          justifyContent={"center"}
-          color={"gray.light"}
-          pb="3"
-          cursor={"pointer"}
-        >
-          <Text fontWeight={"bold"}> Replies</Text>
         </Flex>
       </Flex>
     </VStack>

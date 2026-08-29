@@ -3,6 +3,7 @@ import User from "../models/userModel.js";
 import bcrypt from "bcryptjs";
 import generateTokenAndSetCookie from "../utils/helpers/generateTokenAndSetCookie.js";
 import { v2 as cloudinary } from "cloudinary";
+import Notification from "../models/notificationModel.js";
 import mongoose from "mongoose";
 
 const getUserProfile = async (req, res) => {
@@ -118,9 +119,7 @@ const followUnFollowUser = async (req, res) => {
 		const userToModify = await User.findById(id);
 		const currentUser = await User.findById(req.user._id);
 
-		if (id === req.user._id.toString())
-			return res.status(400).json({ error: "You cannot follow/unfollow yourself" });
-
+		if (id === req.user._id.toString()) return res.status(400).json({ error: "You cannot follow/unfollow yourself" });
 		if (!userToModify || !currentUser) return res.status(400).json({ error: "User not found" });
 
 		const isFollowing = currentUser.following.includes(id);
@@ -132,11 +131,15 @@ const followUnFollowUser = async (req, res) => {
 		} else {
 			await User.findByIdAndUpdate(id, { $push: { followers: req.user._id } });
 			await User.findByIdAndUpdate(req.user._id, { $push: { following: id } });
+
+			// Trigger Notification
+			const newNotification = new Notification({ type: "follow", sender: req.user._id, recipient: id });
+			await newNotification.save();
+
 			res.status(200).json({ message: "User followed successfully" });
 		}
 	} catch (err) {
 		res.status(500).json({ error: err.message });
-		console.log("Error in followUnFollowUser: ", err.message);
 	}
 };
 
@@ -193,6 +196,7 @@ const updateUser = async (req, res) => {
 	}
 };
 
+
 const getSuggestedUsers = async (req, res) => {
 	try {
 		const userId = req.user._id;
@@ -202,7 +206,9 @@ const getSuggestedUsers = async (req, res) => {
 			{ $match: { _id: { $ne: userId } } },
 			{ $sample: { size: 10 } },
 		]);
-		const filteredUsers = users.filter((user) => !usersFollowedByYou.following.includes(user._id));
+
+		// FIX: Ensure ObjectIds are strings before checking .includes()
+		const filteredUsers = users.filter((user) => !usersFollowedByYou.following.includes(user._id.toString()));
 		const suggestedUsers = filteredUsers.slice(0, 4);
 
 		suggestedUsers.forEach((user) => (user.password = null));
@@ -279,6 +285,20 @@ const toggleAdminMods = async (req, res) => {
 		res.status(500).json({ error: error.message });
 	}
 };
+const searchUser = async (req, res) => {
+	try {
+		const { query } = req.params;
+		const users = await User.find({
+			$or: [
+				{ username: { $regex: query, $options: "i" } },
+				{ name: { $regex: query, $options: "i" } }
+			]
+		}).select("-password").limit(10);
+		res.status(200).json(users);
+	} catch (error) {
+		res.status(500).json({ error: error.message });
+	}
+};
 
 export {
 	signupUser,
@@ -292,5 +312,6 @@ export {
 	deleteAccount,
 	getAllUsers,
 	deleteAnyUser,
-	toggleAdminMods
+	toggleAdminMods,
+	searchUser
 };
