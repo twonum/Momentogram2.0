@@ -15,7 +15,6 @@ const postSchema = mongoose.Schema(
 			type: String,
 		},
 		likes: {
-			// array of user ids
 			type: [mongoose.Schema.Types.ObjectId],
 			ref: "User",
 			default: [],
@@ -39,6 +38,12 @@ const postSchema = mongoose.Schema(
 				},
 			},
 		],
+		// This is CRITICAL for the Reposts tab to work
+		repostedFrom: {
+			type: mongoose.Schema.Types.ObjectId,
+			ref: "Post",
+			default: null,
+		},
 	},
 	{
 		timestamps: true,
@@ -46,5 +51,4 @@ const postSchema = mongoose.Schema(
 );
 
 const Post = mongoose.model("Post", postSchema);
-
 export default Post;

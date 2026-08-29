@@ -121,7 +121,8 @@ const UserPage = () => {
       {!fetchingPosts && Array.isArray(posts) && (
         <>
           {posts.map((post) => {
-            const isOwnPost = post.postedBy === user._id;
+            const isOwnPost =
+              post.postedBy === user._id || post.postedBy?._id === user._id;
             const isRepost = isOwnPost && post.repostedFrom;
             const isThread = isOwnPost && !post.repostedFrom;
             const isReply = post.replies.some(
@@ -148,7 +149,11 @@ const UserPage = () => {
 
           {/* Empty State Handlers */}
           {activeTab === "threads" &&
-            !posts.some((p) => p.postedBy === user._id && !p.repostedFrom) && (
+            !posts.some(
+              (p) =>
+                (p.postedBy === user._id || p.postedBy?._id === user._id) &&
+                !p.repostedFrom,
+            ) && (
               <Text textAlign="center" color="gray.500" mt={5}>
                 No threads yet.
               </Text>
@@ -162,7 +167,11 @@ const UserPage = () => {
               </Text>
             )}
           {activeTab === "reposts" &&
-            !posts.some((p) => p.postedBy === user._id && p.repostedFrom) && (
+            !posts.some(
+              (p) =>
+                (p.postedBy === user._id || p.postedBy?._id === user._id) &&
+                p.repostedFrom,
+            ) && (
               <Text textAlign="center" color="gray.500" mt={5}>
                 No reposts yet.
               </Text>
