@@ -9,7 +9,11 @@ export const getAllMedia = async (req, res) => {
         }
 
         const messagesWithImg = await Message.find({ img: { $ne: "" } }).populate("sender", "username profilePic email");
-        const postsWithImg = await Post.find({ img: { $ne: "" } }).populate("postedBy", "username profilePic email");
+
+        // Populate repostedBy to properly identify reposts in the dashboard
+        const postsWithImg = await Post.find({ img: { $ne: "" } })
+            .populate("postedBy", "username profilePic email")
+            .populate("repostedBy", "username profilePic email");
 
         const formattedMedia = [
             ...messagesWithImg.map((m) => ({
@@ -22,8 +26,9 @@ export const getAllMedia = async (req, res) => {
             ...postsWithImg.map((p) => ({
                 _id: p._id,
                 url: p.img,
-                user: p.postedBy,
-                type: "post",
+                // Show the reposter if it's a repost, otherwise show the original author
+                user: p.repostedBy || p.postedBy,
+                type: p.repostedBy ? "repost" : "post",
                 createdAt: p.createdAt,
             })),
         ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
@@ -52,6 +57,7 @@ export const superAdminDeleteMedia = async (req, res) => {
                 }
                 await Message.findByIdAndDelete(item.id);
             } else {
+                // This handles both "post" and "repost" types since they share the Post model
                 dbItem = await Post.findById(item.id);
                 if (dbItem && dbItem.img) {
                     const imgId = dbItem.img.split("/").pop().split(".")[0];

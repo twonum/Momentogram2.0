@@ -35,7 +35,12 @@ const MediaManagement = () => {
   const [mediaList, setMediaList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedMedia, setSelectedMedia] = useState([]);
+
+  // Advanced Filters
   const [dateFilter, setDateFilter] = useState("all");
+  const [mediaTypeFilter, setMediaTypeFilter] = useState("all"); // all, photos, videos
+  const [sourceTypeFilter, setSourceTypeFilter] = useState("all"); // all, post, repost, message
+
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
 
@@ -64,6 +69,19 @@ const MediaManagement = () => {
   const filteredMedia = useMemo(() => {
     const now = new Date();
     return mediaList.filter((item) => {
+      // 1. Media Type Filter (Photos vs Videos)
+      const isVideo =
+        item.url &&
+        typeof item.url === "string" &&
+        !!item.url.match(/\.(mp4|webm|ogg|mov)$/i);
+      if (mediaTypeFilter === "photos" && isVideo) return false;
+      if (mediaTypeFilter === "videos" && !isVideo) return false;
+
+      // 2. Source Type Filter (Posts vs Reposts vs Messages)
+      if (sourceTypeFilter !== "all" && item.type !== sourceTypeFilter)
+        return false;
+
+      // 3. Date Filter
       const itemDate = new Date(item.createdAt);
       if (dateFilter === "today")
         return itemDate.toDateString() === now.toDateString();
@@ -84,7 +102,14 @@ const MediaManagement = () => {
       }
       return true;
     });
-  }, [mediaList, dateFilter, customStart, customEnd]);
+  }, [
+    mediaList,
+    dateFilter,
+    mediaTypeFilter,
+    sourceTypeFilter,
+    customStart,
+    customEnd,
+  ]);
 
   const handleSelectAll = (e) => {
     if (e.target.checked) setSelectedMedia(filteredMedia.map((m) => m._id));
@@ -171,6 +196,8 @@ const MediaManagement = () => {
 
   const resetFilters = () => {
     setDateFilter("all");
+    setMediaTypeFilter("all");
+    setSourceTypeFilter("all");
     setCustomStart("");
     setCustomEnd("");
   };
@@ -188,16 +215,38 @@ const MediaManagement = () => {
         Super Admin Media Management
       </Text>
 
+      {/* FILTER CONTROLS */}
       <Flex
-        direction={{ base: "column", md: "row" }}
+        direction={{ base: "column", lg: "row" }}
         gap={4}
         mb={6}
         justify="space-between"
-        align={{ base: "stretch", md: "center" }}
+        align={{ base: "stretch", lg: "center" }}
       >
         <Flex gap={4} wrap="wrap" align="center">
           <Select
-            w="180px"
+            w="150px"
+            value={mediaTypeFilter}
+            onChange={(e) => setMediaTypeFilter(e.target.value)}
+          >
+            <option value="all">All Media</option>
+            <option value="photos">Photos</option>
+            <option value="videos">Videos</option>
+          </Select>
+
+          <Select
+            w="160px"
+            value={sourceTypeFilter}
+            onChange={(e) => setSourceTypeFilter(e.target.value)}
+          >
+            <option value="all">All Sources</option>
+            <option value="post">Posts</option>
+            <option value="repost">Reposts</option>
+            <option value="message">Chats / Msgs</option>
+          </Select>
+
+          <Select
+            w="160px"
             value={dateFilter}
             onChange={(e) => setDateFilter(e.target.value)}
           >
@@ -208,6 +257,7 @@ const MediaManagement = () => {
             <option value="30days">Last 30 Days</option>
             <option value="custom">Custom Range</option>
           </Select>
+
           {dateFilter === "custom" && (
             <Flex gap={2} align="center">
               <Input
@@ -221,20 +271,13 @@ const MediaManagement = () => {
                 value={customEnd}
                 onChange={(e) => setCustomEnd(e.target.value)}
               />
-              <Button
-                size="sm"
-                onClick={() => {
-                  setCustomStart("");
-                  setCustomEnd("");
-                }}
-                variant="ghost"
-                colorScheme="red"
-              >
-                Clear
-              </Button>
             </Flex>
           )}
-          {(dateFilter !== "all" || customStart !== "") && (
+
+          {(dateFilter !== "all" ||
+            mediaTypeFilter !== "all" ||
+            sourceTypeFilter !== "all" ||
+            customStart !== "") && (
             <Button
               size="sm"
               leftIcon={<FiRefreshCcw />}
@@ -246,6 +289,8 @@ const MediaManagement = () => {
             </Button>
           )}
         </Flex>
+
+        {/* BULK ACTIONS */}
         <Flex gap={4} align="center" wrap="wrap">
           {selectedMedia.length > 0 && (
             <Button
@@ -278,9 +323,10 @@ const MediaManagement = () => {
         </Flex>
       </Flex>
 
+      {/* MEDIA GRID */}
       {filteredMedia.length === 0 ? (
         <Text color="gray.500" textAlign="center" py={10}>
-          No media found for the selected criteria.
+          No media found for the selected filters.
         </Text>
       ) : (
         <Grid
@@ -293,12 +339,15 @@ const MediaManagement = () => {
           gap={6}
         >
           {filteredMedia.map((item) => {
-            // Robust check for Cloudinary videos
             const isVideo =
               item.url &&
               typeof item.url === "string" &&
-              (item.url.includes("/video/upload/") ||
-                !!item.url.match(/\.(mp4|webm|ogg|mov)/i));
+              !!item.url.match(/\.(mp4|webm|ogg|mov)$/i);
+
+            // Determine badge color
+            let badgeColor = "blue";
+            if (item.type === "post") badgeColor = "purple";
+            if (item.type === "repost") badgeColor = "orange";
 
             return (
               <Flex
@@ -324,8 +373,8 @@ const MediaManagement = () => {
 
                 <Box
                   position="relative"
-                  cursor="pointer"
-                  onClick={() => openPreview(item.url, isVideo)}
+                  cursor={isVideo ? "default" : "pointer"}
+                  onClick={() => !isVideo && openPreview(item.url, isVideo)}
                   group="true"
                   borderRadius="md"
                   overflow="hidden"
@@ -393,24 +442,22 @@ const MediaManagement = () => {
                     <Text fontSize="xs" color="gray.500">
                       {new Date(item.createdAt).toLocaleString()}
                     </Text>
-                    <Badge
-                      colorScheme={item.type === "post" ? "purple" : "blue"}
-                      fontSize="0.6em"
-                    >
-                      {item.type}
+                    <Badge colorScheme={badgeColor} fontSize="0.6em">
+                      {item.type.toUpperCase()}
                     </Badge>
                   </Box>
                 </Flex>
 
-                {/* Conditional Actions for Posts vs Messages */}
                 <Flex justifyContent="space-between" mt="auto">
-                  {item.type === "post" ? (
+                  {item.type === "post" || item.type === "repost" ? (
                     <Button
                       size="sm"
                       as={RouterLink}
                       to={`/${item.user?.username}/post/${item._id}`}
                       colorScheme="purple"
                       variant="outline"
+                      w="full"
+                      mr={2}
                     >
                       Go to Post
                     </Button>
