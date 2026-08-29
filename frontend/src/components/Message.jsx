@@ -45,10 +45,10 @@ const Message = ({ ownMessage, message, onDeleteMessage }) => {
   const isVideo =
     message.img &&
     typeof message.img === "string" &&
-    !!message.img.match(/\.(mp4|webm|ogg|mov)$/i);
+    (message.img.includes("/video/upload/") ||
+      !!message.img.match(/\.(mp4|webm|ogg|mov)/i));
   const hasMedia = message.img && message.img.trim() !== "";
 
-  // Normal users can only delete text. Super Admins can delete their own text, photos, and videos.
   const canDelete =
     ownMessage && (!hasMedia || currentUser?.role === "superadmin");
 
@@ -112,7 +112,6 @@ const Message = ({ ownMessage, message, onDeleteMessage }) => {
           />
         )}
 
-        {/* Only show delete menu if user is allowed */}
         {canDelete && (
           <Menu>
             <MenuButton
@@ -138,10 +137,11 @@ const Message = ({ ownMessage, message, onDeleteMessage }) => {
           </Menu>
         )}
 
+        {/* Constrain bubble width on ultra-wide screens for readability */}
         <Flex
           direction="column"
           align={ownMessage ? "flex-end" : "flex-start"}
-          maxW="80%"
+          maxW={{ base: "85%", md: "70%", lg: "65%" }}
         >
           {message.text && (
             <Box
@@ -178,8 +178,8 @@ const Message = ({ ownMessage, message, onDeleteMessage }) => {
               onClick={onOpen}
               borderRadius={12}
               overflow="hidden"
-              maxW="240px"
-              maxH="240px"
+              maxW="300px"
+              maxH="300px"
             >
               <video
                 src={message.img}
@@ -207,7 +207,7 @@ const Message = ({ ownMessage, message, onDeleteMessage }) => {
               borderRadius={12}
               mt={2}
               maxW="100%"
-              maxH="300px"
+              maxH="350px"
               cursor="pointer"
               onClick={onOpen}
               objectFit="cover"
@@ -240,7 +240,6 @@ const Message = ({ ownMessage, message, onDeleteMessage }) => {
         )}
       </Flex>
 
-      {/* FULLY RESPONSIVE MODAL VIEWER FOR IMAGES & VIDEOS */}
       <Modal isOpen={isOpen} onClose={onClose} size="full" isCentered>
         <ModalOverlay bg="blackAlpha.900" backdropFilter="blur(5px)" />
         <ModalContent

@@ -36,7 +36,8 @@ const ChatPage = () => {
   const showToast = useShowToast();
   const { socket, onlineUsers } = useSocket();
 
-  const [sidebarWidth, setSidebarWidth] = useState(350);
+  // Increased default sidebar width slightly to match a wider screen aesthetic
+  const [sidebarWidth, setSidebarWidth] = useState(380);
   const containerRef = useRef(null);
   const isResizing = useRef(false);
 
@@ -56,7 +57,7 @@ const ChatPage = () => {
     if (!isResizing.current || !containerRef.current) return;
     const containerRect = containerRef.current.getBoundingClientRect();
     const newWidth = e.clientX - containerRect.left;
-    if (newWidth >= 300 && newWidth <= 500) setSidebarWidth(newWidth);
+    if (newWidth >= 300 && newWidth <= 600) setSidebarWidth(newWidth);
   }, []);
 
   const stopResizing = useCallback(() => {
@@ -192,15 +193,15 @@ const ChatPage = () => {
   return (
     <Box
       position="relative"
-      w="full"
+      left="50%"
+      transform="translateX(-50%)"
+      w={{ base: "100vw", lg: "95vw", xl: "1600px" }}
+      maxW="100vw"
       h="calc(100vh - 100px)"
-      maxW="1200px"
-      mx="auto"
-      px={2}
+      px={{ base: 2, md: 4 }}
       pb={4}
       overflow="hidden"
     >
-      {/* MASTER WRAPPER: Rigid 100% height block */}
       <Flex
         ref={containerRef}
         w="100%"
@@ -217,7 +218,7 @@ const ChatPage = () => {
         <Flex
           w={{ base: "full", md: `${sidebarWidth}px` }}
           minW={{ md: "300px" }}
-          maxW={{ md: "500px" }}
+          maxW={{ md: "600px" }}
           display={{
             base: selectedConversation?._id ? "none" : "flex",
             md: "flex",
@@ -296,7 +297,7 @@ const ChatPage = () => {
           <Box w="1px" h="30px" bg="gray.400" />
         </Box>
 
-        {/* RIGHT PANEL: Box instead of Flex stops flex-grow overflow bugs */}
+        {/* RIGHT PANEL: Expansive chat area */}
         <Box
           flex={1}
           minW={0}
