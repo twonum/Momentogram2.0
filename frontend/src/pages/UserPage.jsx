@@ -56,6 +56,7 @@ const UserPage = () => {
     <>
       <UserHeader user={user} />
 
+      {/* Profile Tabs: Threads | Replies | Reposts */}
       <Flex w={"full"} mt={4} mb={6}>
         <Flex
           flex={1}
@@ -93,6 +94,24 @@ const UserPage = () => {
             Replies
           </Text>
         </Flex>
+        <Flex
+          flex={1}
+          borderBottom={
+            activeTab === "reposts" ? "1.5px solid" : "1px solid gray"
+          }
+          borderColor={activeTab === "reposts" ? "white" : "gray"}
+          justifyContent={"center"}
+          pb="3"
+          cursor={"pointer"}
+          onClick={() => setActiveTab("reposts")}
+        >
+          <Text
+            fontWeight={"bold"}
+            color={activeTab === "reposts" ? "inherit" : "gray.light"}
+          >
+            Reposts
+          </Text>
+        </Flex>
       </Flex>
 
       {!fetchingPosts && Array.isArray(posts) && posts.length === 0 && (
@@ -107,10 +126,21 @@ const UserPage = () => {
 
       {Array.isArray(posts) &&
         posts.map((post) => {
-          if (activeTab === "threads" && post.postedBy === user._id) {
+          if (
+            activeTab === "threads" &&
+            post.postedBy === user._id &&
+            !post.repostedFrom
+          ) {
             return <Post key={post._id} post={post} postedBy={post.postedBy} />;
           }
           if (activeTab === "replies" && post.postedBy !== user._id) {
+            return <Post key={post._id} post={post} postedBy={post.postedBy} />;
+          }
+          if (
+            activeTab === "reposts" &&
+            post.postedBy === user._id &&
+            post.repostedFrom
+          ) {
             return <Post key={post._id} post={post} postedBy={post.postedBy} />;
           }
           return null;

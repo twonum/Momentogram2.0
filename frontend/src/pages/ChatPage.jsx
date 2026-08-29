@@ -44,8 +44,6 @@ const ChatPage = () => {
   const borderColor = useColorModeValue("gray.200", "whiteAlpha.200");
   const dividerColor = useColorModeValue("blue.400", "blue.500");
   const sidebarBg = useColorModeValue("white", "gray.900");
-  const chatAreaBg = useColorModeValue("white", "gray.900");
-  const inputBg = useColorModeValue("gray.50", "whiteAlpha.50");
 
   const startResizing = useCallback((e) => {
     e.preventDefault();
@@ -58,9 +56,7 @@ const ChatPage = () => {
     if (!isResizing.current || !containerRef.current) return;
     const containerRect = containerRef.current.getBoundingClientRect();
     const newWidth = e.clientX - containerRect.left;
-    if (newWidth >= 320 && newWidth <= 500) {
-      setSidebarWidth(newWidth);
-    }
+    if (newWidth >= 300 && newWidth <= 500) setSidebarWidth(newWidth);
   }, []);
 
   const stopResizing = useCallback(() => {
@@ -70,39 +66,56 @@ const ChatPage = () => {
   }, [resize]);
 
   useEffect(() => {
-    socket?.on("messagesSeen", ({ conversationId }) => {
+    socket?.on("newMessage", (message) => {
       setConversations((prev) => {
-        const updatedConversations = prev?.map((conversation) => {
-          if (conversation._id === conversationId) {
-            return {
-              ...conversation,
-              lastMessage: { ...conversation.lastMessage, seen: true },
-            };
-          }
-          return conversation;
-        });
-        return updatedConversations;
+        const existingIndex = prev.findIndex(
+          (c) => c._id === message.conversationId,
+        );
+        if (existingIndex > -1) {
+          const updated = [...prev];
+          updated[existingIndex] = {
+            ...updated[existingIndex],
+            lastMessage: {
+              text: message.text || "Sent an attachment",
+              sender: message.sender,
+              seen: false,
+            },
+          };
+          const [moved] = updated.splice(existingIndex, 1);
+          return [moved, ...updated];
+        }
+        return prev;
       });
     });
+
+    socket?.on("messagesSeen", ({ conversationId }) => {
+      setConversations((prev) =>
+        prev?.map((c) =>
+          c._id === conversationId
+            ? { ...c, lastMessage: { ...c.lastMessage, seen: true } }
+            : c,
+        ),
+      );
+    });
+
+    return () => {
+      socket?.off("newMessage");
+      socket?.off("messagesSeen");
+    };
   }, [socket, setConversations]);
 
-  // Fetch conversations and instantly synchronize with any pre-selected user from profile/search
   useEffect(() => {
     const getConversations = async () => {
       try {
         const res = await fetch("/api/messages/conversations");
         const data = await res.json();
-        if (data.error || data.message) {
-          showToast("Error", data.error || data.message, "error");
-          return;
-        }
+        if (data.error) return showToast("Error", data.error, "error");
 
         if (selectedConversation?.userId) {
           const existingConv = data.find(
             (c) => c.participants?.[0]?._id === selectedConversation.userId,
           );
           if (existingConv) {
-            // Prioritize existing conversation data
             setSelectedConversation({
               _id: existingConv._id,
               userId: existingConv.participants[0]._id,
@@ -111,7 +124,6 @@ const ChatPage = () => {
             });
             setConversations(data);
           } else {
-            // Keep the selected mock/new user active
             setConversations([selectedConversation, ...data]);
           }
         } else {
@@ -123,7 +135,6 @@ const ChatPage = () => {
         setLoadingConversations(false);
       }
     };
-
     getConversations();
   }, [showToast, setConversations, selectedConversation?.userId]);
 
@@ -133,25 +144,17 @@ const ChatPage = () => {
     try {
       const res = await fetch(`/api/users/profile/${searchText}`);
       const searchedUser = await res.json();
+      if (searchedUser.error)
+        return showToast("Error", searchedUser.error, "error");
+      if (searchedUser._id === currentUser._id)
+        return showToast("Error", "You cannot message yourself", "error");
 
-      if (searchedUser.error || searchedUser.message) {
-        showToast("Error", searchedUser.error || searchedUser.message, "error");
-        return;
-      }
-
-      if (searchedUser._id === currentUser._id) {
-        showToast("Error", "You cannot message yourself", "error");
-        return;
-      }
-
-      const conversationAlreadyExists = conversations.find(
-        (conversation) =>
-          conversation.participants?.[0]?._id === searchedUser._id,
+      const existing = conversations.find(
+        (c) => c.participants?.[0]?._id === searchedUser._id,
       );
-
-      if (conversationAlreadyExists) {
+      if (existing) {
         setSelectedConversation({
-          _id: conversationAlreadyExists._id,
+          _id: existing._id,
           userId: searchedUser._id,
           username: searchedUser.username,
           userProfilePic: searchedUser.profilePic,
@@ -159,7 +162,7 @@ const ChatPage = () => {
         return;
       }
 
-      const mockConversation = {
+      const mock = {
         mock: true,
         lastMessage: { text: "", sender: "" },
         _id: Date.now(),
@@ -171,9 +174,9 @@ const ChatPage = () => {
           },
         ],
       };
-      setConversations((prevConvs) => [mockConversation, ...prevConvs]);
+      setConversations((prev) => [mock, ...prev]);
       setSelectedConversation({
-        _id: mockConversation._id,
+        _id: mock._id,
         userId: searchedUser._id,
         username: searchedUser.username,
         userProfilePic: searchedUser.profilePic,
@@ -188,17 +191,20 @@ const ChatPage = () => {
 
   return (
     <Box
-      position={"relative"}
+      position="relative"
       w="full"
-      h="calc(100vh - 110px)"
-      maxW="100%"
+      h="calc(100vh - 100px)"
+      maxW="1200px"
       mx="auto"
       px={2}
-      pb={2}
+      pb={4}
+      overflow="hidden"
     >
+      {/* MASTER WRAPPER: Rigid 100% height block */}
       <Flex
         ref={containerRef}
-        gap={0}
+        w="100%"
+        h="100%"
         flexDirection={{ base: "column", md: "row" }}
         bg={bgCard}
         borderRadius="24px"
@@ -206,80 +212,61 @@ const ChatPage = () => {
         borderColor={borderColor}
         overflow="hidden"
         boxShadow="2xl"
-        w="full"
-        h="full"
       >
+        {/* LEFT PANEL */}
         <Flex
           w={{ base: "full", md: `${sidebarWidth}px` }}
-          minW={{ md: "320px" }}
+          minW={{ md: "300px" }}
           maxW={{ md: "500px" }}
           display={{
             base: selectedConversation?._id ? "none" : "flex",
             md: "flex",
           }}
-          gap={3}
-          flexDirection={"column"}
-          p={5}
+          flexDirection="column"
           bg={sidebarBg}
-          overflowY="auto"
-          h="full"
+          h="100%"
           flexShrink={0}
         >
-          <Text
-            fontWeight={800}
-            fontSize="2xl"
-            px={2}
-            pt={2}
-            pb={2}
-            tracking="tight"
-          >
-            Messages
-          </Text>
-
-          <form onSubmit={handleConversationSearch}>
-            <InputGroup size="md" px={1}>
-              <InputLeftElement pointerEvents="none" h="full" pl={3}>
-                <SearchIcon color="gray.400" boxSize={4} />
-              </InputLeftElement>
-              <Input
-                placeholder="Search messages..."
-                borderRadius="full"
-                bg={inputBg}
-                borderColor="transparent"
-                _hover={{ borderColor: "gray.300" }}
-                _focus={{
-                  bg: "transparent",
-                  borderColor: "blue.400",
-                  boxShadow: "none",
-                }}
-                pl={10}
-                py={5}
-                onChange={(e) => setSearchText(e.target.value)}
-              />
-            </InputGroup>
-          </form>
-
-          <Box mt={2} overflowY="auto" flex={1}>
+          <Box p={5} pb={2}>
+            <Text
+              fontWeight={800}
+              fontSize="2xl"
+              px={2}
+              pt={2}
+              pb={2}
+              tracking="tight"
+            >
+              Messages
+            </Text>
+            <form onSubmit={handleConversationSearch}>
+              <InputGroup size="md" px={1}>
+                <InputLeftElement pointerEvents="none" h="full" pl={3}>
+                  <SearchIcon color="gray.400" boxSize={4} />
+                </InputLeftElement>
+                <Input
+                  placeholder="Search messages..."
+                  borderRadius="full"
+                  bg={useColorModeValue("gray.50", "whiteAlpha.50")}
+                  border="none"
+                  pl={10}
+                  py={5}
+                  onChange={(e) => setSearchText(e.target.value)}
+                />
+              </InputGroup>
+            </form>
+          </Box>
+          <Box flex={1} overflowY="auto" px={5} pb={5}>
             {loadingConversations &&
               [0, 1, 2, 3].map((_, i) => (
-                <Flex
-                  key={i}
-                  gap={3}
-                  alignItems={"center"}
-                  p={3}
-                  mb={1}
-                  borderRadius="xl"
-                >
-                  <SkeletonCircle size={"12"} />
-                  <Flex w={"full"} flexDirection={"column"} gap={2}>
-                    <Skeleton h={"12px"} w={"100px"} borderRadius="md" />
-                    <Skeleton h={"10px"} w={"75%"} borderRadius="md" />
+                <Flex key={i} gap={3} alignItems="center" p={3} mb={1}>
+                  <SkeletonCircle size="12" />
+                  <Flex w="full" flexDirection="column" gap={2}>
+                    <Skeleton h="12px" w="100px" borderRadius="md" />
+                    <Skeleton h="10px" w="75%" borderRadius="md" />
                   </Flex>
                 </Flex>
               ))}
-
             {!loadingConversations &&
-              Array.isArray(conversations) &&
               conversations.map((conversation) => (
                 <Box key={conversation._id} mb={1.5}>
                   <Conversation
@@ -293,6 +280,7 @@ const ChatPage = () => {
           </Box>
         </Flex>
 
+        {/* RESIZER DRAG HANDLE */}
         <Box
           display={{ base: "none", md: "flex" }}
           w="6px"
@@ -301,33 +289,32 @@ const ChatPage = () => {
           alignItems="center"
           justifyContent="center"
           _hover={{ bg: dividerColor }}
-          transition="background 0.2s"
           onMouseDown={startResizing}
           zIndex={10}
+          flexShrink={0}
         >
           <Box w="1px" h="30px" bg="gray.400" />
         </Box>
 
-        <Flex
+        {/* RIGHT PANEL: Box instead of Flex stops flex-grow overflow bugs */}
+        <Box
           flex={1}
+          minW={0}
+          w="100%"
+          h="100%"
           display={{
-            base: selectedConversation?._id ? "flex" : "none",
-            md: "flex",
+            base: selectedConversation?._id ? "block" : "none",
+            md: "block",
           }}
-          flexDir="column"
-          justifyContent="center"
-          alignItems="center"
-          bg={chatAreaBg}
-          position="relative"
-          h="full"
+          bg={useColorModeValue("white", "gray.900")}
           overflow="hidden"
         >
           {!selectedConversation?._id ? (
             <Flex
-              flexDir={"column"}
-              alignItems={"center"}
-              justifyContent={"center"}
-              height={"100%"}
+              flexDir="column"
+              alignItems="center"
+              justifyContent="center"
+              h="100%"
               p={8}
               textAlign="center"
             >
@@ -345,13 +332,13 @@ const ChatPage = () => {
               </Text>
               <Text fontSize="sm" color="gray.500" maxW="300px">
                 Choose from your existing chats or search for a user to start
-                messaging across the platform.
+                messaging.
               </Text>
             </Flex>
           ) : (
             <MessageContainer />
           )}
-        </Flex>
+        </Box>
       </Flex>
     </Box>
   );

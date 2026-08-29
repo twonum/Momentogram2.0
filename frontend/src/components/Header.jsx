@@ -33,7 +33,11 @@ import { FiLogOut, FiSearch, FiBell, FiArrowLeft } from "react-icons/fi";
 import useLogout from "../hooks/useLogout";
 import authScreenAtom from "../atoms/authAtom";
 import { BsFillChatQuoteFill } from "react-icons/bs";
-import { MdOutlineAdminPanelSettings, MdOutlineSettings } from "react-icons/md";
+import {
+  MdOutlineAdminPanelSettings,
+  MdOutlineSettings,
+  MdPermMedia,
+} from "react-icons/md";
 import { useState, useEffect } from "react";
 import useShowToast from "../hooks/useShowToast";
 
@@ -47,12 +51,42 @@ const Header = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const hoverBg = useColorModeValue("gray.100", "gray.700");
-
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [searchText, setSearchText] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+
+  // ALL HOOKS EXTRACTED - Fixed the "Rules of Hooks" Crash
+  const hoverBg = useColorModeValue("gray.100", "gray.700");
+  const menuBg = useColorModeValue("white", "gray.dark");
+  const notifBorderColor = useColorModeValue("gray.100", "whiteAlpha.100");
+  const unreadBgColor = useColorModeValue("blue.50", "whiteAlpha.50");
+  const hoverItemBgColor = useColorModeValue("gray.100", "whiteAlpha.200");
+  const inputBgColor = useColorModeValue("white", "whiteAlpha.150");
+
+  const unreadCount = notifications.filter((n) => !n.read).length;
+  const showBackButton = location.pathname !== "/";
+
+  useEffect(() => {
+    if (!user) return;
+    const fetchNotifications = async () => {
+      try {
+        const res = await fetch("/api/notifications");
+        const text = await res.text();
+        const data = text ? JSON.parse(text) : {};
+        if (res.status === 401 || data.error?.includes("deleted")) {
+          localStorage.removeItem("user-threads");
+          window.location.href = "/auth";
+          return;
+        }
+        if (!data.error && Array.isArray(data)) setNotifications(data);
+      } catch (error) {
+        console.error(error);
+      }
+    };
+    fetchNotifications();
+  }, [user]);
 
   const handleSearch = async (e) => {
     e.preventDefault();
@@ -85,29 +119,6 @@ const Header = () => {
     navigate("/chat");
   };
 
-  const [notifications, setNotifications] = useState([]);
-  const unreadCount = notifications.filter((n) => !n.read).length;
-
-  useEffect(() => {
-    if (!user) return;
-    const fetchNotifications = async () => {
-      try {
-        const res = await fetch("/api/notifications");
-        const text = await res.text();
-        const data = text ? JSON.parse(text) : {};
-        if (res.status === 401 || data.error?.includes("deleted")) {
-          localStorage.removeItem("user-threads");
-          window.location.href = "/auth";
-          return;
-        }
-        if (!data.error && Array.isArray(data)) setNotifications(data);
-      } catch (error) {
-        console.error(error);
-      }
-    };
-    fetchNotifications();
-  }, [user]);
-
   const handleMarkAsRead = async () => {
     if (unreadCount === 0) return;
     try {
@@ -117,8 +128,6 @@ const Header = () => {
       console.error(error);
     }
   };
-
-  const showBackButton = location.pathname !== "/";
 
   return (
     <Flex
@@ -144,7 +153,6 @@ const Header = () => {
             </Button>
           </Tooltip>
         )}
-
         {user && (
           <Tooltip label="Home Feed" hasArrow placement="bottom">
             <Link as={RouterLink} to="/">
@@ -166,6 +174,17 @@ const Header = () => {
             </Link>
           </Tooltip>
         )}
+        {user && user.role === "superadmin" && (
+          <Tooltip
+            label="Super Admin Media Management"
+            hasArrow
+            placement="bottom"
+          >
+            <Link as={RouterLink} to={`/admin/media`}>
+              <MdPermMedia size={22} color="purple" />
+            </Link>
+          </Tooltip>
+        )}
       </Flex>
 
       {!user && (
@@ -177,7 +196,6 @@ const Header = () => {
           Login
         </Link>
       )}
-
       <Tooltip label="Toggle Dark/Light Mode" placement="bottom" hasArrow>
         <Image
           cursor={"pointer"}
@@ -221,7 +239,7 @@ const Header = () => {
                   p={2}
                   borderRadius="xl"
                   boxShadow="xl"
-                  bg={useColorModeValue("white", "gray.dark")}
+                  bg={menuBg}
                 >
                   <Text
                     px={3}
@@ -229,10 +247,7 @@ const Header = () => {
                     fontWeight="bold"
                     fontSize="sm"
                     borderBottom="1px solid"
-                    borderColor={useColorModeValue(
-                      "gray.100",
-                      "whiteAlpha.100",
-                    )}
+                    borderColor={notifBorderColor}
                     mb={1}
                   >
                     Notifications
@@ -257,14 +272,8 @@ const Header = () => {
                           borderRadius="lg"
                           p={3}
                           mb={1}
-                          bg={
-                            !notif.read
-                              ? useColorModeValue("blue.50", "whiteAlpha.50")
-                              : "transparent"
-                          }
-                          _hover={{
-                            bg: useColorModeValue("gray.100", "whiteAlpha.200"),
-                          }}
+                          bg={!notif.read ? unreadBgColor : "transparent"}
+                          _hover={{ bg: hoverItemBgColor }}
                         >
                           <Avatar
                             src={notif.sender.profilePic}
@@ -288,25 +297,21 @@ const Header = () => {
               </Menu>
             </Box>
           </Tooltip>
-
           <Tooltip label="My Profile" hasArrow placement="bottom">
             <Link as={RouterLink} to={`/${user.username}`}>
               <RxAvatar size={22} />
             </Link>
           </Tooltip>
-
           <Tooltip label="Chat" hasArrow placement="bottom">
             <Link as={RouterLink} to={`/chat`}>
               <BsFillChatQuoteFill size={18} />
             </Link>
           </Tooltip>
-
           <Tooltip label="Settings" hasArrow placement="bottom">
             <Link as={RouterLink} to={`/settings`}>
               <MdOutlineSettings size={18} />
             </Link>
           </Tooltip>
-
           <Tooltip label="Logout" hasArrow placement="bottom">
             <Button size={"xs"} onClick={logout} px={2}>
               <FiLogOut size={16} />
@@ -403,5 +408,4 @@ const Header = () => {
     </Flex>
   );
 };
-
 export default Header;

@@ -25,7 +25,7 @@ async function sendMessage(req, res) {
 		}
 
 		if (img) {
-			const uploadedResponse = await cloudinary.uploader.upload(img);
+			const uploadedResponse = await cloudinary.uploader.upload(img, { resource_type: "auto" });
 			img = uploadedResponse.secure_url;
 		}
 
@@ -105,4 +105,47 @@ async function getConversations(req, res) {
 	}
 }
 
-export { sendMessage, getMessages, getConversations };
+const deleteMessage = async (req, res) => {
+	try {
+		const { messageId } = req.params;
+		const message = await Message.findById(messageId);
+		if (!message) return res.status(404).json({ error: "Message not found" });
+
+		// Ensure user is the sender
+		if (message.sender.toString() !== req.user._id.toString()) {
+			return res.status(401).json({ error: "Unauthorized to delete this message" });
+		}
+
+		// STRICT MEDIA LOCKDOWN: Prevent normal users from deleting photos or videos
+		if (message.img && message.img.trim() !== "" && req.user.role !== "superadmin") {
+			return res.status(403).json({ error: "Forbidden: Only Super Admins can delete media files." });
+		}
+
+		await Message.findByIdAndDelete(messageId);
+		res.status(200).json({ message: "Message deleted successfully", messageId });
+	} catch (error) {
+		res.status(500).json({ error: error.message });
+	}
+};
+
+
+const deleteConversation = async (req, res) => {
+	try {
+		const { conversationId } = req.params;
+		const conversation = await Conversation.findById(conversationId);
+		if (!conversation) return res.status(404).json({ error: "Conversation not found" });
+
+		// Verify participant
+		if (!conversation.participants.includes(req.user._id)) {
+			return res.status(401).json({ error: "Unauthorized" });
+		}
+
+		await Message.deleteMany({ conversationId });
+		await Conversation.findByIdAndDelete(conversationId);
+
+		res.status(200).json({ message: "Conversation deleted successfully", conversationId });
+	} catch (error) {
+		res.status(500).json({ error: error.message });
+	}
+};
+export { sendMessage, getMessages, getConversations, deleteMessage, deleteConversation };

@@ -26,7 +26,7 @@ const createPost = async (req, res) => {
 		}
 
 		if (img) {
-			const uploadedResponse = await cloudinary.uploader.upload(img);
+			const uploadedResponse = await cloudinary.uploader.upload(img, { resource_type: "auto" });
 			img = uploadedResponse.secure_url;
 		}
 
@@ -134,6 +134,27 @@ const replyToPost = async (req, res) => {
 	}
 };
 
+export const repostPost = async (req, res) => {
+	try {
+		const { id: postId } = req.params;
+		const userId = req.user._id;
+
+		const originalPost = await Post.findById(postId);
+		if (!originalPost) return res.status(404).json({ error: "Post not found" });
+
+		const newPost = new Post({
+			postedBy: userId,
+			text: originalPost.text,
+			img: originalPost.img,
+			repostedFrom: originalPost._id,
+		});
+
+		await newPost.save();
+		res.status(201).json(newPost);
+	} catch (error) {
+		res.status(500).json({ error: error.message });
+	}
+};
 
 const getFeedPosts = async (req, res) => {
 	try {

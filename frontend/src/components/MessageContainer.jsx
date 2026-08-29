@@ -2,6 +2,7 @@ import {
   Avatar,
   Divider,
   Flex,
+  Box,
   Image,
   Input,
   Skeleton,
@@ -40,7 +41,8 @@ const MessageContainer = () => {
   const [conversations, setConversations] = useRecoilState(conversationsAtom);
   const currentUser = useRecoilValue(userAtom);
   const { socket } = useSocket();
-  const { handleImageChange, imgUrl, setImgUrl } = usePreviewImg();
+  const { handleImageChange, imgUrl, setImgUrl, fileType, setFileType } =
+    usePreviewImg();
   const [isSending, setIsSending] = useState(false);
   const messageEndRef = useRef(null);
   const imageRef = useRef(null);
@@ -49,39 +51,12 @@ const MessageContainer = () => {
   const inputContainerBg = useColorModeValue("gray.50", "gray.900");
   const borderColor = useColorModeValue("gray.100", "whiteAlpha.100");
 
-  const activeAvatar =
-    selectedConversation.userProfilePic ||
-    selectedConversation.profilePic ||
-    "";
-
   useEffect(() => {
     socket?.on("newMessage", (message) => {
-      if (selectedConversation._id === message.conversationId) {
+      if (selectedConversation._id === message.conversationId)
         setMessages((prev) => [...prev, message]);
-      }
-
-      if (!document.hasFocus()) {
-        const sound = new Audio(notificationSound);
-        sound.play();
-      }
-
-      setConversations((prev) => {
-        const updatedConversations = prev.map((conversation) => {
-          if (conversation._id === message.conversationId) {
-            return {
-              ...conversation,
-              lastMessage: {
-                text: message.text,
-                sender: message.sender,
-              },
-            };
-          }
-          return conversation;
-        });
-        return updatedConversations;
-      });
+      if (!document.hasFocus()) new Audio(notificationSound).play();
     });
-
     return () => socket?.off("newMessage");
   }, [socket, selectedConversation, setConversations]);
 
@@ -89,28 +64,16 @@ const MessageContainer = () => {
     const lastMessageIsFromOtherUser =
       messages.length &&
       messages[messages.length - 1].sender !== currentUser._id;
-    if (lastMessageIsFromOtherUser) {
+    if (lastMessageIsFromOtherUser)
       socket.emit("markMessagesAsSeen", {
         conversationId: selectedConversation._id,
         userId: selectedConversation.userId,
       });
-    }
-
     socket?.on("messagesSeen", ({ conversationId }) => {
-      if (selectedConversation._id === conversationId) {
-        setMessages((prev) => {
-          const updatedMessages = prev.map((message) => {
-            if (!message.seen) {
-              return {
-                ...message,
-                seen: true,
-              };
-            }
-            return message;
-          });
-          return updatedMessages;
-        });
-      }
+      if (selectedConversation._id === conversationId)
+        setMessages((prev) =>
+          prev.map((msg) => (!msg.seen ? { ...msg, seen: true } : msg)),
+        );
     });
   }, [socket, currentUser._id, messages, selectedConversation]);
 
@@ -123,24 +86,15 @@ const MessageContainer = () => {
       if (
         !selectedConversation?.userId ||
         selectedConversation.userId === "undefined"
-      ) {
-        setLoadingMessages(false);
-        return;
-      }
-
+      )
+        return setLoadingMessages(false);
       setLoadingMessages(true);
       setMessages([]);
       try {
-        if (selectedConversation.mock) {
-          setLoadingMessages(false);
-          return;
-        }
+        if (selectedConversation.mock) return setLoadingMessages(false);
         const res = await fetch(`/api/messages/${selectedConversation.userId}`);
         const data = await res.json();
-        if (data.error) {
-          showToast("Error", data.error, "error");
-          return;
-        }
+        if (data.error) return showToast("Error", data.error, "error");
         setMessages(data);
       } catch (error) {
         showToast("Error", error.message, "error");
@@ -148,7 +102,6 @@ const MessageContainer = () => {
         setLoadingMessages(false);
       }
     };
-
     getMessages();
   }, [selectedConversation?.userId, selectedConversation?.mock, showToast]);
 
@@ -156,14 +109,11 @@ const MessageContainer = () => {
     e.preventDefault();
     if (!newMessage && !imgUrl) return;
     if (isSending) return;
-
     setIsSending(true);
     try {
       const res = await fetch("/api/messages", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           recipientId: selectedConversation.userId,
           message: newMessage,
@@ -171,62 +121,56 @@ const MessageContainer = () => {
         }),
       });
       const data = await res.json();
-      if (data.error) {
-        showToast("Error", data.error, "error");
-        return;
-      }
+      if (data.error) return showToast("Error", data.error, "error");
 
       setMessages((prev) => [...prev, data]);
-
-      // Immediately update conversation list sidebar in real time
       setConversations((prev) => {
-        let conversationExists = false;
-        const updatedConversations = prev.map((conversation) => {
+        let exists = false;
+        const updated = prev.map((conv) => {
           if (
-            conversation._id === selectedConversation._id ||
-            conversation.participants?.[0]?._id === selectedConversation.userId
+            conv._id === selectedConversation._id ||
+            conv.participants?.[0]?._id === selectedConversation.userId
           ) {
-            conversationExists = true;
+            exists = true;
             return {
-              ...conversation,
-              mock: false, // clear mock flag since message is now saved in DB
+              ...conv,
+              mock: false,
               lastMessage: {
-                text: newMessage || "Sent an image",
+                text: newMessage || "Sent media",
                 sender: data.sender,
                 seen: false,
               },
             };
           }
-          return conversation;
+          return conv;
         });
-
-        if (!conversationExists) {
-          // If it was a brand new conversation not yet in sidebar array, prepend it
-          const newConv = {
-            _id: data.conversationId || Date.now(),
-            participants: [
-              {
-                _id: selectedConversation.userId,
-                username: selectedConversation.username,
-                profilePic:
-                  selectedConversation.userProfilePic ||
-                  selectedConversation.profilePic,
+        if (!exists) {
+          return [
+            {
+              _id: data.conversationId || Date.now(),
+              participants: [
+                {
+                  _id: selectedConversation.userId,
+                  username: selectedConversation.username,
+                  profilePic:
+                    selectedConversation.userProfilePic ||
+                    selectedConversation.profilePic,
+                },
+              ],
+              lastMessage: {
+                text: newMessage || "Sent media",
+                sender: data.sender,
+                seen: false,
               },
-            ],
-            lastMessage: {
-              text: newMessage || "Sent an image",
-              sender: data.sender,
-              seen: false,
             },
-          };
-          return [newConv, ...updatedConversations];
+            ...updated,
+          ];
         }
-
-        return updatedConversations;
+        return updated;
       });
-
       setNewMessage("");
       setImgUrl("");
+      if (setFileType) setFileType(null);
     } catch (error) {
       showToast("Error", error.message, "error");
     } finally {
@@ -234,124 +178,105 @@ const MessageContainer = () => {
     }
   };
 
-  const goToProfile = (e) => {
-    e.stopPropagation();
-    if (selectedConversation?.username) {
-      navigate(`/${selectedConversation.username}`);
-    }
-  };
-
   return (
-    <Flex
-      w="full"
-      h="full"
-      flexDirection="column"
-      bg={useColorModeValue("white", "gray.900")}
-      borderTopRightRadius="20px"
-      borderBottomRightRadius="20px"
-      overflow="hidden"
-    >
-      {/* Sleek Chat Header with Back Button */}
+    <Flex w="100%" h="100%" flexDirection="column" overflow="hidden">
+      {/* HEADER: Absolute rigid bounds */}
       <Flex
-        w={"full"}
-        h={16}
-        alignItems={"center"}
+        flexShrink={0}
+        w="100%"
+        h="65px"
+        minH="65px"
+        alignItems="center"
         px={4}
         gap={3}
         bg={headerBg}
         borderBottom="1px solid"
         borderColor={borderColor}
-        flexShrink={0}
       >
-        {/* Back Button to return to conversation list */}
         <Button
           size="sm"
           variant="ghost"
           borderRadius="full"
           p={2}
           onClick={() => setSelectedConversation(null)}
-          title="Back to conversations"
         >
           <FiArrowLeft size={20} />
         </Button>
-
         <Flex
           alignItems="center"
           gap={3}
           cursor="pointer"
           flex={1}
-          onClick={goToProfile}
-          _hover={{ opacity: 0.85 }}
+          onClick={() => navigate(`/${selectedConversation.username}`)}
         >
-          <Avatar src={activeAvatar} size={"sm"} />
-          <Text
-            display={"flex"}
-            alignItems={"center"}
-            fontWeight={"bold"}
-            fontSize="md"
-            isTruncated
-          >
+          <Avatar
+            src={
+              selectedConversation.userProfilePic ||
+              selectedConversation.profilePic
+            }
+            size="sm"
+          />
+          <Text fontWeight="bold" fontSize="md" isTruncated>
             {selectedConversation.username}{" "}
-            <Image src="/verified.png" w={4} h={4} ml={1} />
+            <Image src="/verified.png" w={4} h={4} ml={1} display="inline" />
           </Text>
         </Flex>
       </Flex>
 
-      {/* Messages Scroll Area */}
-      <Flex
+      {/* MESSAGES FEED: Box forces isolated scrolling */}
+      <Box
         flex={1}
-        flexDirection={"column"}
+        w="100%"
+        minH={0}
+        overflowY="auto"
+        overflowX="hidden"
         px={5}
         py={4}
-        overflowY={"auto"}
-        overflowX={"hidden"}
-        gap={4}
-        w="full"
       >
-        {loadingMessages &&
-          [0, 1, 2, 4, 5].map((_, i) => (
-            <Flex
-              key={i}
-              gap={3}
-              alignItems={"center"}
-              p={1}
-              borderRadius={"md"}
-              alignSelf={i % 2 === 0 ? "flex-start" : "flex-end"}
-            >
-              {i % 2 === 0 && <SkeletonCircle size={7} />}
-              <Skeleton h={"40px"} w={"250px"} borderRadius="xl" />
-              {i % 2 !== 0 && <SkeletonCircle size={7} />}
-            </Flex>
-          ))}
-
-        {!loadingMessages &&
-          messages.map((message, idx) => (
-            <Flex
-              key={message._id}
-              direction="column"
-              w="full"
-              maxW="100%"
-              overflow="hidden"
-              ref={idx === messages.length - 1 ? messageEndRef : null}
-            >
-              <Message
-                message={message}
-                ownMessage={currentUser._id === message.sender}
-              />
-              {idx < messages.length - 1 && (
-                <Divider
-                  my={2}
-                  opacity={0.15}
-                  borderColor="gray.400"
-                  w="60%"
-                  mx="auto"
+        <Flex direction="column" gap={4}>
+          {loadingMessages &&
+            [0, 1, 2, 3].map((_, i) => (
+              <Flex
+                key={i}
+                gap={3}
+                alignItems="center"
+                alignSelf={i % 2 === 0 ? "flex-start" : "flex-end"}
+              >
+                <SkeletonCircle size={7} />
+                <Skeleton h="40px" w="250px" borderRadius="xl" />
+              </Flex>
+            ))}
+          {!loadingMessages &&
+            messages.map((message, idx) => (
+              <Flex
+                key={message._id}
+                direction="column"
+                w="100%"
+                overflow="hidden"
+              >
+                <Message
+                  message={message}
+                  ownMessage={currentUser._id === message.sender}
+                  onDeleteMessage={(id) =>
+                    setMessages((prev) => prev.filter((m) => m._id !== id))
+                  }
                 />
-              )}
-            </Flex>
-          ))}
-      </Flex>
+                {idx < messages.length - 1 && (
+                  <Divider
+                    my={2}
+                    opacity={0.15}
+                    borderColor="gray.400"
+                    w="60%"
+                    mx="auto"
+                  />
+                )}
+              </Flex>
+            ))}
+          <div ref={messageEndRef} />
+        </Flex>
+      </Box>
 
-      {/* Image Preview Container if attached */}
+      {/* UPLOAD PREVIEW */}
       {imgUrl && (
         <Flex
           px={5}
@@ -361,30 +286,51 @@ const MessageContainer = () => {
           gap={3}
           flexShrink={0}
         >
-          <Image
-            src={imgUrl}
-            alt="Selected img"
-            w="60px"
-            h="60px"
-            objectFit="cover"
-            borderRadius="lg"
+          {fileType === "video" ? (
+            <video
+              src={imgUrl}
+              width="60"
+              height="60"
+              style={{ objectFit: "cover", borderRadius: "8px" }}
+            />
+          ) : (
+            <Image
+              src={imgUrl}
+              w="60px"
+              h="60px"
+              objectFit="cover"
+              borderRadius="lg"
+            />
+          )}
+          <CloseButton
+            onClick={() => {
+              setImgUrl("");
+              if (setFileType) setFileType(null);
+            }}
           />
-          <CloseButton onClick={() => setImgUrl("")} />
         </Flex>
       )}
 
-      {/* Modern Sleek Input Footer */}
-      <form onSubmit={handleSendMessage} style={{ width: "100%" }}>
-        <Flex
-          alignItems={"center"}
-          px={4}
-          py={3}
-          bg={inputContainerBg}
-          borderTop="1px solid"
-          borderColor={borderColor}
-          gap={3}
-          w="full"
-          flexShrink={0}
+      {/* BOTTOM INPUT: Rigid flexShrink=0 */}
+      <Flex
+        flexShrink={0}
+        w="100%"
+        alignItems="center"
+        px={4}
+        py={3}
+        bg={inputContainerBg}
+        borderTop="1px solid"
+        borderColor={borderColor}
+        gap={3}
+      >
+        <form
+          onSubmit={handleSendMessage}
+          style={{
+            width: "100%",
+            display: "flex",
+            gap: "12px",
+            alignItems: "center",
+          }}
         >
           <Input
             placeholder="Type a message..."
@@ -392,18 +338,14 @@ const MessageContainer = () => {
             onChange={(e) => setNewMessage(e.target.value)}
             borderRadius="full"
             bg={useColorModeValue("white", "whiteAlpha.150")}
-            border="1px solid"
-            borderColor={useColorModeValue("gray.200", "whiteAlpha.200")}
             py={5}
             flex={1}
-            minW="0"
-            wordBreak="break-word"
-            _focus={{ borderColor: "blue.400", boxShadow: "none" }}
           />
           <input
             type="file"
             hidden
             ref={imageRef}
+            accept="image/*,video/*"
             onChange={handleImageChange}
           />
           <Button
@@ -411,7 +353,6 @@ const MessageContainer = () => {
             borderRadius="full"
             variant="ghost"
             onClick={() => imageRef.current.click()}
-            colorScheme="gray"
             p={3}
             flexShrink={0}
           >
@@ -428,8 +369,8 @@ const MessageContainer = () => {
           >
             <IoSend size={16} />
           </Button>
-        </Flex>
-      </form>
+        </form>
+      </Flex>
     </Flex>
   );
 };

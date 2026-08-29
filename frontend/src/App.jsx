@@ -13,6 +13,7 @@ import CreatePost from "./components/CreatePost";
 import ChatPage from "./pages/ChatPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import AdminPage from "./pages/AdminPage";
+import MediaManagement from "./pages/MediaManagement";
 
 function App() {
   const user = useRecoilValue(userAtom);
@@ -38,6 +39,18 @@ function App() {
             path="/update"
             element={user ? <UpdateProfilePage /> : <Navigate to="/auth" />}
           />
+
+          <Route
+            path="/admin/media"
+            element={
+              user?.role === "superadmin" ? (
+                <MediaManagement />
+              ) : (
+                <Navigate to="/" />
+              )
+            }
+          />
+
           <Route
             path="/:username"
             element={
