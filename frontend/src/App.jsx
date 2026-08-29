@@ -4,6 +4,7 @@ import UserPage from "./pages/UserPage";
 import PostPage from "./pages/PostPage";
 import Header from "./components/Header";
 import HomePage from "./pages/HomePage";
+import NotFoundPage from "./pages/NotFoundPage";
 import AuthPage from "./pages/AuthPage";
 import { useRecoilValue } from "recoil";
 import userAtom from "./atoms/userAtom";
@@ -49,6 +50,9 @@ function App() {
               )
             }
           />
+
+          <Route path="*" element={<NotFoundPage />} />
+
           <Route path="/:username/post/:pid" element={<PostPage />} />
           <Route
             path="/chat"

@@ -103,22 +103,28 @@ const AdminPage = () => {
     );
 
   return (
-    <Box w="full" maxW="800px" mx="auto">
-      <Text fontSize="3xl" fontWeight="bold" mb={6} textAlign="center">
+    <Box w="full" maxW="800px" mx="auto" px={{ base: 2, md: 4 }}>
+      <Text
+        fontSize={{ base: "2xl", md: "3xl" }}
+        fontWeight="bold"
+        mb={6}
+        textAlign="center"
+      >
         Management Dashboard
       </Text>
 
       <Tabs variant="enclosed" colorScheme="blue">
-        <TabList>
-          <Tab>👥 User Management</Tab>
+        <TabList overflowX="auto" overflowY="hidden">
+          <Tab fontSize={{ base: "sm", md: "md" }}>👥 User Management</Tab>
           {currentUser?.role === "superadmin" && (
-            <Tab>👑 Super Admin Controls</Tab>
+            <Tab fontSize={{ base: "sm", md: "md" }}>
+              👑 Super Admin Controls
+            </Tab>
           )}
         </TabList>
 
         <TabPanels>
-          {/* User Management Tab */}
-          <TabPanel>
+          <TabPanel px={0}>
             <Flex direction="column" gap={4} mt={4}>
               {Array.isArray(users) &&
                 users.map((u) => (
@@ -126,24 +132,27 @@ const AdminPage = () => {
                     key={u._id}
                     justifyContent="space-between"
                     alignItems="center"
-                    p={4}
+                    p={{ base: 3, md: 4 }}
                     bg={bgConfig}
                     color={textColor}
                     borderRadius="md"
                     boxShadow="sm"
+                    wrap="wrap"
+                    gap={3}
                   >
-                    <Flex gap={4} alignItems="center">
+                    <Flex gap={3} alignItems="center" flex="1" minW="200px">
                       <Avatar
                         src={u.profilePic}
                         name={u.username}
                         cursor="pointer"
                         onClick={() => window.open(`/${u.username}`, "_blank")}
                       />
-                      <Box>
-                        <Flex gap={2} alignItems="center">
+                      <Box overflow="hidden">
+                        <Flex gap={2} alignItems="center" wrap="wrap">
                           <Text
                             fontWeight="bold"
                             cursor="pointer"
+                            isTruncated
                             onClick={() =>
                               window.open(`/${u.username}`, "_blank")
                             }
@@ -151,13 +160,22 @@ const AdminPage = () => {
                             {u.username}
                           </Text>
                           {u.role === "superadmin" && (
-                            <Badge colorScheme="red">Super Admin</Badge>
+                            <Badge colorScheme="red" fontSize="10px">
+                              Super Admin
+                            </Badge>
                           )}
                           {u.role === "admin" && (
-                            <Badge colorScheme="green">Admin</Badge>
+                            <Badge colorScheme="green" fontSize="10px">
+                              Admin
+                            </Badge>
                           )}
                         </Flex>
-                        <Text fontSize="sm" color="gray.500">
+                        <Text
+                          fontSize="xs"
+                          color="gray.500"
+                          isTruncated
+                          maxW="220px"
+                        >
                           {u.email}
                         </Text>
                       </Box>
@@ -167,6 +185,7 @@ const AdminPage = () => {
                         size="sm"
                         colorScheme="red"
                         onClick={() => handleDeleteUser(u._id)}
+                        flexShrink={0}
                       >
                         Delete User
                       </Button>
@@ -176,16 +195,17 @@ const AdminPage = () => {
             </Flex>
           </TabPanel>
 
-          {/* Super Admin Controls Tab */}
           {currentUser?.role === "superadmin" && (
-            <TabPanel>
+            <TabPanel px={0}>
               <Box p={6} bg={bgConfig} borderRadius="md" boxShadow="sm" mt={4}>
                 <FormControl
                   display="flex"
                   alignItems="center"
                   justifyContent="space-between"
+                  wrap="wrap"
+                  gap={4}
                 >
-                  <Box>
+                  <Box maxW="500px">
                     <FormLabel htmlFor="mod-alerts" mb="0" fontWeight="bold">
                       Allow Normal Admins to Modify Data
                     </FormLabel>

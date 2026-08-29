@@ -49,7 +49,6 @@ const Header = () => {
 
   const hoverBg = useColorModeValue("gray.100", "gray.700");
 
-  // Search Logic
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [searchText, setSearchText] = useState("");
   const [searchResults, setSearchResults] = useState([]);
@@ -86,7 +85,6 @@ const Header = () => {
     navigate("/chat");
   };
 
-  // Notifications Logic
   const [notifications, setNotifications] = useState([]);
   const unreadCount = notifications.filter((n) => !n.read).length;
 
@@ -97,20 +95,14 @@ const Header = () => {
         const res = await fetch("/api/notifications");
         const text = await res.text();
         const data = text ? JSON.parse(text) : {};
-
-        if (
-          res.status === 401 ||
-          data.error?.includes("deleted") ||
-          data.error?.includes("Unauthorized")
-        ) {
+        if (res.status === 401 || data.error?.includes("deleted")) {
           localStorage.removeItem("user-threads");
           window.location.href = "/auth";
           return;
         }
-
         if (!data.error && Array.isArray(data)) setNotifications(data);
       } catch (error) {
-        console.error("Notification fetch error:", error);
+        console.error(error);
       }
     };
     fetchNotifications();
@@ -126,13 +118,19 @@ const Header = () => {
     }
   };
 
-  // Check if we can go back (hide back button on home route "/")
   const showBackButton = location.pathname !== "/";
 
   return (
-    <Flex justifyContent={"space-between"} alignItems={"center"} mt={6} mb="12">
-      <Flex gap={3} alignItems="center">
-        {/* Universal Back Button */}
+    <Flex
+      justifyContent={"space-between"}
+      alignItems={"center"}
+      mt={{ base: 3, md: 6 }}
+      mb={{ base: 6, md: "12" }}
+      px={{ base: 2, md: 0 }}
+      wrap="wrap"
+      gap={3}
+    >
+      <Flex gap={{ base: 2, md: 3 }} alignItems="center" wrap="wrap">
         {showBackButton && (
           <Tooltip label="Go Back" hasArrow placement="bottom">
             <Button
@@ -150,21 +148,21 @@ const Header = () => {
         {user && (
           <Tooltip label="Home Feed" hasArrow placement="bottom">
             <Link as={RouterLink} to="/">
-              <AiFillHome size={24} />
+              <AiFillHome size={22} />
             </Link>
           </Tooltip>
         )}
         {user && (
           <Tooltip label="Search Users" hasArrow placement="bottom">
-            <Box cursor="pointer" onClick={onOpen}>
-              <FiSearch size={22} />
+            <Box cursor="pointer" onClick={onOpen} p={1}>
+              <FiSearch size={20} />
             </Box>
           </Tooltip>
         )}
         {user && (user.role === "admin" || user.role === "superadmin") && (
           <Tooltip label="Admin Dashboard" hasArrow placement="bottom">
             <Link as={RouterLink} to={`/admin`}>
-              <MdOutlineAdminPanelSettings size={24} color="red" />
+              <MdOutlineAdminPanelSettings size={22} color="red" />
             </Link>
           </Tooltip>
         )}
@@ -184,14 +182,14 @@ const Header = () => {
         <Image
           cursor={"pointer"}
           alt="logo"
-          w={6}
+          w={5}
           src={colorMode === "dark" ? "/light-logo.svg" : "/dark-logo.svg"}
           onClick={toggleColorMode}
         />
       </Tooltip>
 
       {user && (
-        <Flex alignItems={"center"} gap={4}>
+        <Flex alignItems={"center"} gap={{ base: 2, md: 4 }} wrap="wrap">
           <Tooltip label="Notifications" hasArrow placement="bottom">
             <Box>
               <Menu onOpen={handleMarkAsRead}>
@@ -199,9 +197,10 @@ const Header = () => {
                   display="flex"
                   alignItems="center"
                   justifyContent="center"
+                  p={1}
                 >
                   <Flex alignItems="center" position="relative">
-                    <FiBell size={22} />
+                    <FiBell size={20} />
                     {unreadCount > 0 && (
                       <Badge
                         colorScheme="red"
@@ -209,6 +208,7 @@ const Header = () => {
                         top="-1"
                         right="-2"
                         borderRadius="full"
+                        fontSize="10px"
                       >
                         {unreadCount}
                       </Badge>
@@ -247,38 +247,42 @@ const Header = () => {
                       No new notifications
                     </Text>
                   ) : (
-                    notifications.map((notif) => (
-                      <MenuItem
-                        key={notif._id}
-                        as={RouterLink}
-                        to={`/${notif.sender.username}`}
-                        borderRadius="lg"
-                        p={3}
-                        mb={1}
-                        bg={
-                          !notif.read
-                            ? useColorModeValue("blue.50", "whiteAlpha.50")
-                            : "transparent"
-                        }
-                        _hover={{
-                          bg: useColorModeValue("gray.100", "whiteAlpha.200"),
-                        }}
-                      >
-                        <Avatar
-                          src={notif.sender.profilePic}
-                          size="sm"
-                          mr={3}
-                        />
-                        <Box>
-                          <Text fontSize="sm">
-                            <b>{notif.sender.username}</b> started following you
-                          </Text>
-                          <Text fontSize="xs" color="gray.500" mt={0.5}>
-                            {new Date(notif.createdAt).toLocaleDateString()}
-                          </Text>
-                        </Box>
-                      </MenuItem>
-                    ))
+                    notifications.map((notif) => {
+                      if (!notif || !notif.sender) return null;
+                      return (
+                        <MenuItem
+                          key={notif._id}
+                          as={RouterLink}
+                          to={`/${notif.sender.username}`}
+                          borderRadius="lg"
+                          p={3}
+                          mb={1}
+                          bg={
+                            !notif.read
+                              ? useColorModeValue("blue.50", "whiteAlpha.50")
+                              : "transparent"
+                          }
+                          _hover={{
+                            bg: useColorModeValue("gray.100", "whiteAlpha.200"),
+                          }}
+                        >
+                          <Avatar
+                            src={notif.sender.profilePic}
+                            size="sm"
+                            mr={3}
+                          />
+                          <Box>
+                            <Text fontSize="sm">
+                              <b>{notif.sender.username}</b> started following
+                              you
+                            </Text>
+                            <Text fontSize="xs" color="gray.500" mt={0.5}>
+                              {new Date(notif.createdAt).toLocaleDateString()}
+                            </Text>
+                          </Box>
+                        </MenuItem>
+                      );
+                    })
                   )}
                 </MenuList>
               </Menu>
@@ -287,25 +291,25 @@ const Header = () => {
 
           <Tooltip label="My Profile" hasArrow placement="bottom">
             <Link as={RouterLink} to={`/${user.username}`}>
-              <RxAvatar size={24} />
+              <RxAvatar size={22} />
             </Link>
           </Tooltip>
 
           <Tooltip label="Chat" hasArrow placement="bottom">
             <Link as={RouterLink} to={`/chat`}>
-              <BsFillChatQuoteFill size={20} />
+              <BsFillChatQuoteFill size={18} />
             </Link>
           </Tooltip>
 
           <Tooltip label="Settings" hasArrow placement="bottom">
             <Link as={RouterLink} to={`/settings`}>
-              <MdOutlineSettings size={20} />
+              <MdOutlineSettings size={18} />
             </Link>
           </Tooltip>
 
           <Tooltip label="Logout" hasArrow placement="bottom">
-            <Button size={"xs"} onClick={logout}>
-              <FiLogOut size={20} />
+            <Button size={"xs"} onClick={logout} px={2}>
+              <FiLogOut size={16} />
             </Button>
           </Tooltip>
         </Flex>
@@ -343,46 +347,55 @@ const Header = () => {
               </Flex>
             </form>
             <Flex direction="column" mt={6} gap={2}>
-              {searchResults.map((u) => (
-                <Flex
-                  key={u._id}
-                  justifyContent="space-between"
-                  alignItems="center"
-                  p={2}
-                  _hover={{ bg: hoverBg }}
-                  borderRadius="md"
-                  transition="all 0.2s"
-                >
-                  <Flex
-                    gap={3}
-                    alignItems="center"
-                    cursor="pointer"
-                    onClick={() => {
-                      onClose();
-                      navigate(`/${u.username}`);
-                    }}
-                  >
-                    <Avatar src={u.profilePic} name={u.name} />
-                    <Box>
-                      <Text fontWeight="bold">{u.username}</Text>
-                      <Text fontSize="sm" color="gray.500">
-                        {u.name}
-                      </Text>
-                    </Box>
-                  </Flex>
-                  {u._id !== user._id && (
-                    <Button
-                      size="sm"
-                      borderRadius="full"
-                      colorScheme="blue"
-                      variant="outline"
-                      onClick={() => handleDirectMessage(u)}
+              {Array.isArray(searchResults) &&
+                searchResults.map((u) => {
+                  if (!u) return null;
+                  return (
+                    <Flex
+                      key={u._id || Math.random()}
+                      justifyContent="space-between"
+                      alignItems="center"
+                      p={2}
+                      _hover={{ bg: hoverBg }}
+                      borderRadius="md"
+                      transition="all 0.2s"
                     >
-                      Chat
-                    </Button>
-                  )}
-                </Flex>
-              ))}
+                      <Flex
+                        gap={3}
+                        alignItems="center"
+                        cursor="pointer"
+                        onClick={() => {
+                          onClose();
+                          if (u.username) navigate(`/${u.username}`);
+                        }}
+                      >
+                        <Avatar
+                          src={u.profilePic}
+                          name={u.name || u.username}
+                        />
+                        <Box>
+                          <Text fontWeight="bold">
+                            {u.username || "Unknown"}
+                          </Text>
+                          <Text fontSize="sm" color="gray.500">
+                            {u.name}
+                          </Text>
+                        </Box>
+                      </Flex>
+                      {user && u._id !== user._id && (
+                        <Button
+                          size="sm"
+                          borderRadius="full"
+                          colorScheme="blue"
+                          variant="outline"
+                          onClick={() => handleDirectMessage(u)}
+                        >
+                          Chat
+                        </Button>
+                      )}
+                    </Flex>
+                  );
+                })}
             </Flex>
           </ModalBody>
         </ModalContent>

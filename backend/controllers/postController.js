@@ -134,6 +134,7 @@ const replyToPost = async (req, res) => {
 	}
 };
 
+
 const getFeedPosts = async (req, res) => {
 	try {
 		const userId = req.user._id;
@@ -144,11 +145,18 @@ const getFeedPosts = async (req, res) => {
 
 		const following = user.following;
 
-		const feedPosts = await Post.find({ postedBy: { $in: following } }).sort({ createdAt: -1 });
+		// Feed includes posts from followed users AND recent global posts so admins/new users never see an empty feed
+		const feedPosts = await Post.find({ $or: [{ postedBy: { $in: following } }, { postedBy: userId }] }).sort({ createdAt: -1 });
+
+		if (feedPosts.length === 0) {
+			// Fallback to recent posts across platform if following list is empty
+			const generalPosts = await Post.find({}).sort({ createdAt: -1 }).limit(20);
+			return res.status(200).json(generalPosts);
+		}
 
 		res.status(200).json(feedPosts);
-	} catch (err) {
-		res.status(500).json({ error: err.message });
+	} catch (error) {
+		res.status(500).json({ error: error.message });
 	}
 };
 
