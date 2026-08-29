@@ -411,8 +411,6 @@ const MediaManagement = () => {
                       to={`/${item.user?.username}/post/${item._id}`}
                       colorScheme="purple"
                       variant="outline"
-                      w="full"
-                      mr={2}
                     >
                       Go to Post
                     </Button>

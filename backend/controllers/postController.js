@@ -189,7 +189,13 @@ const getUserPosts = async (req, res) => {
 			return res.status(404).json({ error: "User not found" });
 		}
 
-		const posts = await Post.find({ postedBy: user._id }).sort({ createdAt: -1 });
+		// Fetch posts created by user OR posts where user has left a reply
+		const posts = await Post.find({
+			$or: [
+				{ postedBy: user._id },
+				{ "replies.userId": user._id }
+			]
+		}).sort({ createdAt: -1 });
 
 		res.status(200).json(posts);
 	} catch (error) {

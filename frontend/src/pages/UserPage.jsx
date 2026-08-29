@@ -29,7 +29,6 @@ const UserPage = () => {
           setPosts([]);
           return;
         }
-
         setPosts(data);
       } catch (error) {
         showToast("Error", error.message, "error");
@@ -56,7 +55,6 @@ const UserPage = () => {
     <>
       <UserHeader user={user} />
 
-      {/* Profile Tabs: Threads | Replies | Reposts */}
       <Flex w={"full"} mt={4} mb={6}>
         <Flex
           flex={1}
@@ -114,37 +112,63 @@ const UserPage = () => {
         </Flex>
       </Flex>
 
-      {!fetchingPosts && Array.isArray(posts) && posts.length === 0 && (
-        <h1>User has no posts.</h1>
-      )}
-
       {fetchingPosts && (
         <Flex justifyContent={"center"} my={12}>
           <Spinner size={"xl"} />
         </Flex>
       )}
 
-      {Array.isArray(posts) &&
-        posts.map((post) => {
-          if (
-            activeTab === "threads" &&
-            post.postedBy === user._id &&
-            !post.repostedFrom
-          ) {
-            return <Post key={post._id} post={post} postedBy={post.postedBy} />;
-          }
-          if (activeTab === "replies" && post.postedBy !== user._id) {
-            return <Post key={post._id} post={post} postedBy={post.postedBy} />;
-          }
-          if (
-            activeTab === "reposts" &&
-            post.postedBy === user._id &&
-            post.repostedFrom
-          ) {
-            return <Post key={post._id} post={post} postedBy={post.postedBy} />;
-          }
-          return null;
-        })}
+      {!fetchingPosts && Array.isArray(posts) && (
+        <>
+          {posts.map((post) => {
+            const isOwnPost = post.postedBy === user._id;
+            const isRepost = isOwnPost && post.repostedFrom;
+            const isThread = isOwnPost && !post.repostedFrom;
+            const isReply = post.replies.some(
+              (reply) => reply.userId === user._id,
+            );
+
+            if (activeTab === "threads" && isThread) {
+              return (
+                <Post key={post._id} post={post} postedBy={post.postedBy} />
+              );
+            }
+            if (activeTab === "replies" && isReply) {
+              return (
+                <Post key={post._id} post={post} postedBy={post.postedBy} />
+              );
+            }
+            if (activeTab === "reposts" && isRepost) {
+              return (
+                <Post key={post._id} post={post} postedBy={post.postedBy} />
+              );
+            }
+            return null;
+          })}
+
+          {/* Empty State Handlers */}
+          {activeTab === "threads" &&
+            !posts.some((p) => p.postedBy === user._id && !p.repostedFrom) && (
+              <Text textAlign="center" color="gray.500" mt={5}>
+                No threads yet.
+              </Text>
+            )}
+          {activeTab === "replies" &&
+            !posts.some((p) =>
+              p.replies.some((r) => r.userId === user._id),
+            ) && (
+              <Text textAlign="center" color="gray.500" mt={5}>
+                No replies yet.
+              </Text>
+            )}
+          {activeTab === "reposts" &&
+            !posts.some((p) => p.postedBy === user._id && p.repostedFrom) && (
+              <Text textAlign="center" color="gray.500" mt={5}>
+                No reposts yet.
+              </Text>
+            )}
+        </>
+      )}
     </>
   );
 };
