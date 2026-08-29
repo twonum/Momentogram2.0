@@ -5,20 +5,23 @@ import { Portal } from "@chakra-ui/portal";
 import { Button, useToast, useColorModeValue } from "@chakra-ui/react";
 import { BsInstagram } from "react-icons/bs";
 import { CgMoreO } from "react-icons/cg";
-import { useRecoilValue } from "recoil";
+import { useRecoilValue, useSetRecoilState } from "recoil";
 import userAtom from "../atoms/userAtom";
-import { Link as RouterLink } from "react-router-dom";
+import { selectedConversationAtom } from "../atoms/messagesAtom";
+import { Link as RouterLink, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import useShowToast from "../hooks/useShowToast";
 
 const UserHeader = ({ user }) => {
   const toast = useToast();
   const currentUser = useRecoilValue(userAtom);
+  const setSelectedConversation = useSetRecoilState(selectedConversationAtom);
   const [following, setFollowing] = useState(
     user.followers.includes(currentUser?._id),
   );
   const [updating, setUpdating] = useState(false);
   const showToast = useShowToast();
+  const navigate = useNavigate();
 
   const copyURL = () => {
     const currentURL = window.location.href;
@@ -69,6 +72,21 @@ const UserHeader = ({ user }) => {
     }
   };
 
+  const handleDirectMessage = () => {
+    if (!currentUser) {
+      showToast("Error", "Please login to send a message", "error");
+      return;
+    }
+    setSelectedConversation({
+      _id: Date.now(), // Fallback ID until a real conversation is created
+      userId: user._id,
+      username: user.username,
+      userProfilePic: user.profilePic,
+      mock: true,
+    });
+    navigate("/chat");
+  };
+
   // Smart Button Logic
   const isFollowingMe =
     user.following?.includes(currentUser?._id) ||
@@ -95,7 +113,7 @@ const UserHeader = ({ user }) => {
           <Text fontSize={"2xl"} fontWeight={"bold"}>
             {user.name}
           </Text>
-          <Flex gap={2} alignItems={"center"}>
+          <Flex gap={2} alignItems={"center"} mt={1}>
             <Text fontSize={"sm"} color={"gray.500"} fontWeight={"medium"}>
               @{user.username}
             </Text>
@@ -168,44 +186,79 @@ const UserHeader = ({ user }) => {
 
       {currentUser?._id === user._id && (
         <Link as={RouterLink} to="/update">
-          <Button size={"sm"}>Update Profile</Button>
+          <Button size={"sm"} borderRadius="full" px={6}>
+            Update Profile
+          </Button>
         </Link>
       )}
 
       {currentUser?._id !== user._id && (
-        <Button
-          size={"sm"}
-          onClick={handleFollowUnfollow}
-          isLoading={updating}
-          colorScheme={buttonColor}
-          variant={buttonVariant}
-        >
-          {buttonText}
-        </Button>
+        <Flex gap={3}>
+          <Button
+            size={"sm"}
+            borderRadius="full"
+            px={6}
+            onClick={handleFollowUnfollow}
+            isLoading={updating}
+            colorScheme={buttonColor}
+            variant={buttonVariant}
+          >
+            {buttonText}
+          </Button>
+          <Button
+            size={"sm"}
+            borderRadius="full"
+            px={6}
+            onClick={handleDirectMessage}
+            colorScheme="blue"
+            variant="outline"
+          >
+            Message
+          </Button>
+        </Flex>
       )}
 
-      <Flex w={"full"} justifyContent={"space-between"}>
+      <Flex w={"full"} justifyContent={"space-between"} mt={2}>
         <Flex gap={2} alignItems={"center"}>
-          <Text color={"gray.light"}>{user.followers.length} followers</Text>
+          <Text color={"gray.light"} fontSize="sm">
+            {user.followers.length} followers
+          </Text>
           <Box w="1" h="1" bg={"gray.light"} borderRadius={"full"}></Box>
-          <Text color={"gray.light"}>{user.following.length} following</Text>
+          <Text color={"gray.light"} fontSize="sm">
+            {user.following.length} following
+          </Text>
         </Flex>
-        <Flex>
-          <Box className="icon-container">
-            <BsInstagram size={24} cursor={"pointer"} />
+        <Flex gap={4}>
+          <Box
+            className="icon-container"
+            _hover={{ color: "blue.400" }}
+            transition="0.2s"
+          >
+            <BsInstagram size={22} cursor={"pointer"} />
           </Box>
-          <Box className="icon-container">
+          <Box
+            className="icon-container"
+            _hover={{ color: "blue.400" }}
+            transition="0.2s"
+          >
             <Menu>
               <MenuButton>
-                <CgMoreO size={24} cursor={"pointer"} />
+                <CgMoreO size={22} cursor={"pointer"} />
               </MenuButton>
               <Portal>
-                <MenuList bg={useColorModeValue("gray.200", "gray.dark")}>
+                <MenuList
+                  bg={useColorModeValue("white", "gray.dark")}
+                  boxShadow="xl"
+                  borderRadius="xl"
+                >
                   <MenuItem
-                    bg={useColorModeValue("gray.200", "gray.dark")}
+                    bg={useColorModeValue("white", "gray.dark")}
                     onClick={copyURL}
+                    _hover={{
+                      bg: useColorModeValue("gray.100", "whiteAlpha.200"),
+                    }}
                   >
-                    Copy link
+                    Copy profile link
                   </MenuItem>
                 </MenuList>
               </Portal>
