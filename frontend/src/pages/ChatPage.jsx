@@ -4,6 +4,8 @@ import {
   Button,
   Flex,
   Input,
+  InputGroup,
+  InputLeftElement,
   Skeleton,
   SkeletonCircle,
   Text,
@@ -34,8 +36,12 @@ const ChatPage = () => {
   const showToast = useShowToast();
   const { socket, onlineUsers } = useSocket();
 
-  const bgCard = useColorModeValue("white", "gray.dark");
-  const borderColor = useColorModeValue("gray.200", "whiteAlpha.100");
+  // Minimalist Sleek Tokens
+  const bgCard = useColorModeValue("white", "gray.900");
+  const borderColor = useColorModeValue("gray.100", "whiteAlpha.100");
+  const sidebarBg = useColorModeValue("white", "gray.900");
+  const chatAreaBg = useColorModeValue("white", "gray.900");
+  const inputBg = useColorModeValue("gray.50", "whiteAlpha.50");
 
   useEffect(() => {
     socket?.on("messagesSeen", ({ conversationId }) => {
@@ -152,23 +158,26 @@ const ChatPage = () => {
       w="full"
       maxW="1100px"
       mx="auto"
-      p={{ base: 1, md: 4 }}
+      px={{ base: 2, md: 4 }}
+      py={2}
     >
       <Flex
         gap={0}
         flexDirection={{ base: "column", md: "row" }}
         bg={bgCard}
-        borderRadius="2xl"
+        borderRadius="20px"
         border="1px solid"
         borderColor={borderColor}
         overflow="hidden"
-        boxShadow="xl"
-        minH="680px"
-        maxH="80vh"
+        boxShadow="lg"
+        h={{ base: "calc(100vh - 120px)", md: "720px" }}
       >
-        {/* Conversation Sidebar */}
+        {/* Sleek Minimalist Sidebar */}
         <Flex
-          flex={{ base: selectedConversation?._id ? "0 0 0px" : "1", md: "35" }}
+          flex={{
+            base: selectedConversation?._id ? "0 0 0px" : "1",
+            md: "340px",
+          }}
           display={{
             base: selectedConversation?._id ? "none" : "flex",
             md: "flex",
@@ -176,62 +185,82 @@ const ChatPage = () => {
           gap={3}
           flexDirection={"column"}
           p={4}
+          bg={sidebarBg}
           borderRight="1px solid"
           borderColor={borderColor}
           overflowY="auto"
         >
-          <Text fontWeight={700} fontSize="xl" mb={2} px={1}>
+          <Text
+            fontWeight={700}
+            fontSize="xl"
+            px={2}
+            pt={1}
+            pb={1}
+            tracking="tight"
+          >
             Messages
           </Text>
+
           <form onSubmit={handleConversationSearch}>
-            <Flex alignItems={"center"} gap={2} mb={2}>
+            <InputGroup size="sm" px={1}>
+              <InputLeftElement pointerEvents="none" h="full" pl={3}>
+                <SearchIcon color="gray.400" boxSize={3.5} />
+              </InputLeftElement>
               <Input
-                placeholder="Search direct messages..."
+                placeholder="Search messages..."
                 borderRadius="full"
-                size="md"
-                bg={useColorModeValue("gray.50", "whiteAlpha.50")}
+                bg={inputBg}
+                borderColor="transparent"
+                _hover={{ borderColor: "gray.300" }}
+                _focus={{
+                  bg: "transparent",
+                  borderColor: "blue.400",
+                  boxShadow: "none",
+                }}
+                pl={9}
+                py={4}
                 onChange={(e) => setSearchText(e.target.value)}
               />
-              <Button
-                size={"md"}
-                borderRadius="full"
-                colorScheme="blue"
-                type="submit"
-                isLoading={searchingUser}
-                px={5}
-              >
-                <SearchIcon />
-              </Button>
-            </Flex>
+            </InputGroup>
           </form>
 
-          {loadingConversations &&
-            [0, 1, 2, 3].map((_, i) => (
-              <Flex key={i} gap={4} alignItems={"center"} p={3}>
-                <SkeletonCircle size={"12"} />
-                <Flex w={"full"} flexDirection={"column"} gap={2}>
-                  <Skeleton h={"12px"} w={"100px"} />
-                  <Skeleton h={"10px"} w={"80%"} />
+          <Box mt={1} overflowY="auto">
+            {loadingConversations &&
+              [0, 1, 2, 3].map((_, i) => (
+                <Flex
+                  key={i}
+                  gap={3}
+                  alignItems={"center"}
+                  p={3}
+                  mb={1}
+                  borderRadius="xl"
+                >
+                  <SkeletonCircle size={"10"} />
+                  <Flex w={"full"} flexDirection={"column"} gap={2}>
+                    <Skeleton h={"10px"} w={"90px"} borderRadius="md" />
+                    <Skeleton h={"8px"} w={"70%"} borderRadius="md" />
+                  </Flex>
                 </Flex>
-              </Flex>
-            ))}
+              ))}
 
-          {!loadingConversations &&
-            Array.isArray(conversations) &&
-            conversations.map((conversation) => (
-              <Conversation
-                key={conversation._id}
-                isOnline={onlineUsers.includes(
-                  conversation.participants?.[0]?._id,
-                )}
-                conversation={conversation}
-              />
-            ))}
+            {!loadingConversations &&
+              Array.isArray(conversations) &&
+              conversations.map((conversation) => (
+                <Box key={conversation._id} mb={1}>
+                  <Conversation
+                    isOnline={onlineUsers.includes(
+                      conversation.participants?.[0]?._id,
+                    )}
+                    conversation={conversation}
+                  />
+                </Box>
+              ))}
+          </Box>
         </Flex>
 
-        {/* Chat Box Area */}
+        {/* Clean, Bordered Minimalist Chat Area */}
         <Flex
-          flex={{ base: selectedConversation?._id ? "1" : "0 0 0px", md: "65" }}
+          flex={{ base: selectedConversation?._id ? "1" : "0 0 0px", md: "1" }}
           display={{
             base: selectedConversation?._id ? "flex" : "none",
             md: "flex",
@@ -239,7 +268,8 @@ const ChatPage = () => {
           flexDir="column"
           justifyContent="center"
           alignItems="center"
-          bg={useColorModeValue("gray.50", "blackAlpha.200")}
+          bg={chatAreaBg}
+          position="relative"
         >
           {!selectedConversation?._id ? (
             <Flex
@@ -248,14 +278,23 @@ const ChatPage = () => {
               justifyContent={"center"}
               height={"100%"}
               p={6}
-              color="gray.400"
+              textAlign="center"
             >
-              <GiConversation size={90} />
-              <Text fontSize="lg" fontWeight="600" mt={4}>
-                Your Messages
+              <Box
+                p={5}
+                bg={useColorModeValue("gray.50", "whiteAlpha.50")}
+                borderRadius="full"
+                mb={3}
+                color="gray.400"
+              >
+                <GiConversation size={50} />
+              </Box>
+              <Text fontSize="md" fontWeight="600" color="gray.600" mb={1}>
+                Select a chat
               </Text>
-              <Text fontSize="sm" textAlign="center" maxW="280px" mt={1}>
-                Send private photos and messages to a friend or group.
+              <Text fontSize="xs" color="gray.400" maxW="240px">
+                Choose from your existing conversations or search for a user to
+                start messaging.
               </Text>
             </Flex>
           ) : (
